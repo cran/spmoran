@@ -187,10 +187,15 @@ esf		<-function( y, x = NULL, vif = NULL, meig, fn = "r2" ){
     vif 	<- data.frame(diag( solve( cor( X ) ) ) )
     names(vif)	<- "VIF"
 
-    r2		<- summary( sfmod )$adj.r.squared
+    sf_moran   <-sum(r[,1]^2*ev[Sf_sel_l])/(ev[1]*sum(r[,1]^2))
+    sf_par	<- data.frame( par = c( sd(SF), sf_moran )  )
+    names( sf_par )   <- "Estimate"
+    rownames( sf_par )<- c( "spcomp_SE", "spcomp_Moran.I/max(Moran.I)" )
+
+    r2		  <- summary( sfmod )$adj.r.squared
     loglik	<- logLik( sfmod )
-    AIC		<- AIC( sfmod )
-    BIC		<- BIC( sfmod )
+    AIC		  <- AIC( sfmod )
+    BIC		  <- BIC( sfmod )
     e_stat	<- data.frame( stat = c( sqrt( sig ), r2, loglik, AIC, BIC ) )
     rownames( e_stat ) <- c( "resid_SE", "adjR2", "logLik", "AIC", "BIC")
     if( dum ==0) {
@@ -198,5 +203,5 @@ esf		<-function( y, x = NULL, vif = NULL, meig, fn = "r2" ){
     }
 
     other	<- list( x_id = x_id, sf_id = Sf_sel_l, model = "esf" )
-    return( list( b = b_par, r = r, vif = vif, e = e_stat, sf = SF, pred = pred, resid = resid, other = other ) )
+    return( list( b = b_par, s = sf_par, r = r, vif = vif, e = e_stat, sf = SF, pred = pred, resid = resid, other = other ) )
 }

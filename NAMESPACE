@@ -11,5 +11,7 @@ import(ggplot2)
 import(methods)
 importFrom("stats", "median", "cor", "kmeans", "lm", "logLik",
              "predict", "pt", "residuals", "sd", "approx",
-           "density", "quantile", "rnorm", "optim")
+           "density", "quantile", "rnorm", "optim", "pnorm",
+           "optimize")
+importFrom("Matrix", "sparse.model.matrix")
 importFrom("graphics", "plot")

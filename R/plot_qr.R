@@ -23,12 +23,15 @@ plot_qr <- function( mod, pnum = 1, par = "b", cex.main = 28, cex.lab = 26, cex.
     p          <-ggplot(d, aes_string(x="Quantile", y="Estimates")) +
       geom_ribbon( aes_string( ymin = "CI_lower", ymax = "CI_upper" ), alpha = 0.2 )
   }
-  p    <- p + geom_line(size = lwd ) +
+    p      <- p + geom_line(size = lwd ) +
     geom_abline(intercept=0,slope=0,size=1,linetype="dashed") +
     labs(title = xname ) +
     theme(plot.title = element_text(hjust = 0.5)) +
     theme(title       =element_text(size=cex.main)) +
     theme(axis.title.x=element_text(size=cex.lab) ,axis.title.y=element_text(size=cex.lab)) +
     theme(axis.text.x =element_text(size=cex.axis ),axis.text.y=element_text(size=cex.axis))
+    if( ( pnum ==2 ) & ( par == "s" ) ){
+      p    <- p + ylim(0,1)
+    }
   plot(p)
 }

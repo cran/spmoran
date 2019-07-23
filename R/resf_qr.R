@@ -1,4 +1,4 @@
-resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200 ){
+resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=NULL ){
 
     resf_boot  	<-function( tau_sel, q_sel, y, X, M, meig, mod, iter ){
 
@@ -56,19 +56,21 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200 ){
         b[ -( 1:nx ) ]	<- b[ -( 1:nx ) ] * evSqrt
         sig		<- sum( ( y - XSF0 %*% b ) ^ 2 ) / ( n - nx )
         par[ 2 ]	<- par[ 2 ] * sqrt( sig )
-        return(list( b = b[ 1:nx ], par = par ) )
+        par       <- par[ 2:1 ]
+        sf_moran  <- sum( b[ -( 1:nx ) ] ^ 2 * ev )/( ev[ 1 ] * sum( b[ -( 1:nx ) ] ^ 2 ) )
+        return(list( b = b[ 1:nx ], par = par, sf_moran = sf_moran ) )
       }
 
       b	<- mod$b[  , 1 ]
-    	s	<- mod$s[ 2:1, ]
+    	s	<- c( mod$s[ 1, ], mod$other$sf_alpha )
     	sd	<- mod$e[ 1, 1 ]
     	ev	<- meig$ev
     	n	<- length( y )
     	ne	<- length( ev )
     	nx	<- dim( X )[ 2 ]
 
-    	evv	<- ev ^ s[ 1 ] * ( sum( ev ) / sum( ev ^ s[ 1 ] ) )
-    	evSqrt	<- s[ 2 ] * sqrt( evv )
+    	evv	<- ev ^ s[ 2 ] * ( sum( ev ) / sum( ev ^ s[ 2 ] ) )
+    	evSqrt	<- s[ 1 ] * sqrt( evv )
     	sf2	<- t( t( meig$sf ) * evSqrt )
     	XSF0	<- as.matrix( cbind( X, meig$sf ) )
     	f0	<- density( y )
@@ -82,7 +84,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200 ){
     		fq_b	<- approx( f_b$x, f_b$y, q_sel )$y
     		RIF_b	<- fq0 / fq_b * ( y_b - q_sel) + q_sel
     		sfres_sim	<- re_esfb( y = RIF_b, X = X, XSF0 = XSF0, M = M, meig = meig )
-    		c( sfres_sim$b, sfres_sim$par[ 2:1 ] )
+    		c( sfres_sim$b, c( sfres_sim$par[ 1 ], sfres_sim$sf_moran) )
     	}
     	B	<- as.matrix( res[ , 1:nx ] )
     	S	<- as.matrix( res[ ,( nx + 1): (nx + 2) ] )
@@ -132,8 +134,13 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200 ){
     		EE	<- crossprod( meig$sf )
     	}
     	M	<- as.matrix( rbind( cbind( XX, t( EX ) ), cbind( EX, EE ) ) )
-    	cl	<- makeCluster( detectCores() )
-    	registerDoParallel( cl )
+
+    	if(is.null(cl)) {
+    	  cl <- makeCluster(detectCores())
+    	} else {
+    	  cl <- makeCluster(cl)
+    	}
+    	registerDoParallel(cl)
     }
 
     SFb  	<- NULL
@@ -164,7 +171,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200 ){
     		SFs_boot2_0  <- data.frame( mod$s[ 1:2, ], SFs_boot2_00 )
 
     		rownames( SFb_boot_0 ) <- rownames( SFb_boot2_0 ) <- xname
-    		rownames( SFs_boot_0 ) <- rownames( SFs_boot2_0 ) <- c( "shrink_sf_SE", "shrink_sf_alpha" )
+    		rownames( SFs_boot_0 ) <- rownames( SFs_boot2_0 ) <- c( "spcomp_SE", "spcomp_Moran.I/max(Moran.I)" )
 
     		names( SFb_boot_0 ) <- paste( "iter", 1:iter, sep = "" )
     		names( SFs_boot_0 ) <- paste( "iter", 1:iter, sep = "" )
@@ -187,7 +194,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200 ){
     SFe		    <- data.frame( SFe )
     rownames( SFb ) <- xname
     rownames( SFr ) <- paste( "r", 1:ne, sep = "" )
-    rownames( SFs ) <- c( "shrink_sf_SE", "shrink_sf_alpha" )
+    rownames( SFs ) <- c( "spcomp_SE", "spcomp_Moran.I/max(Moran.I)" )
     rownames( SFe ) <- c( "resid_SE", "quasi_adjR2(cond)" )
 
     tau_name	        <- paste( "tau=", tau, sep= "" )
