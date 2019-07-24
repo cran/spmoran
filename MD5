@@ -1,4 +1,4 @@
-d08f425be4d90cce1cd7626c80b7c5fd *DESCRIPTION
+453da5469bb201915b6d93279f80e50c *DESCRIPTION
 f06435c6689a4cbc48fdd6b57f3bdf7c *NAMESPACE
 62f6d6b1478d4bcf1f9779206840f627 *R/besf.R
 42c8539505076aa21067c3a9324abf04 *R/besf_vc.R
@@ -13,7 +13,7 @@ e982e191033a261a2854bd5dc72d275b *R/predict0.R
 e5c0897d2026988db8089ff2eb27ea01 *R/predict0_vc.R
 7f8a46a534647269a69e2c80e7c7c318 *R/resf.R
 8c3f375cc45c73d91e31f15fb8ca6f34 *R/resf_qr.R
-f12f05c4496792bb93c5869ddbd9df42 *R/resf_vc.R
+a4fd375728e03ace871e3920d128fb64 *R/resf_vc.R
 12de1e8fcd2b32ad0313374b4a44324d *R/weigen.R
 2e8fe2d3958c9bf2dd07fb83dc35b594 *build/vignette.rds
 fb5ea494e393d4c49125c425480652a6 *inst/doc/vignettes.pdf

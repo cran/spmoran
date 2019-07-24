@@ -234,7 +234,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     		for( ff in 1:ng){
         	xg00	<- factor( xgroup[ , ff ] )
     			xg0	  <- sparse.model.matrix( ~ 0 + xg00 )
-    			xg0s	<- colSums( xg0 )
+    			xg0s	<- Matrix::colSums( xg0 )
     			xg_idid	<- max( which( xg0s == max( xg0s ) ) )
     			Xg0	  <- xg0[ , -xg_idid ]
     			xg_id1	<- rep( xg_id0, dim( Xg0 )[2] )
