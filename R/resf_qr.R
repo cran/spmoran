@@ -17,7 +17,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
           m[  -( 1:nx) ]			<- m[ -( 1:nx ) ] * evSqrt
 
           test    <-try( Minv	<- solve( M, tol = 1e-25 ) )
-          if( class( test ) == "try-error" ){
+          if( class( test )[1] == "try-error" ){
             loglik  <- Inf
           } else {
             b	<- Minv %*% m

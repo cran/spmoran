@@ -1,8 +1,8 @@
 Package: spmoran
 Type: Package
 Title: Moran Eigenvector-Based Spatial Regression Models
-Version: 0.1.7.1
-Date: 2019-07-24
+Version: 0.1.7.2
+Date: 2019-12-11
 Author: Daisuke Murakami
 Maintainer: Daisuke Murakami <dmuraka@ism.ac.jp>
 Description: Functions for estimating Moran's eigenvector-based
@@ -16,6 +16,6 @@ Imports: fields, vegan, Matrix, doParallel, foreach, ggplot2, spdep,
 Suggests: R.rsp, rgdal
 VignetteBuilder: R.rsp
 NeedsCompilation: no
-Packaged: 2019-07-24 14:31:48 UTC; murakami
+Packaged: 2019-12-11 13:55:48 UTC; murakami
 Repository: CRAN
-Date/Publication: 2019-07-24 21:30:02 UTC
+Date/Publication: 2019-12-11 14:20:02 UTC

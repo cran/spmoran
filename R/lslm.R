@@ -39,7 +39,7 @@ lslm	<-function( y, x, weig, method = "reml", boot = FALSE, iter = 200 ){
     m1		<- Xy + V_XE %*% Ey
     m2		<- t( t( Ey ) * V_E_diag )
     m		<- c( m0, m1, m2 )
-    if( class( test ) == "try-error" ){
+    if( class( test )[ 1 ] == "try-error" ){
     	loglik  <- Inf
     } else {
     	b	<- Minv %*% m
@@ -137,7 +137,7 @@ res	<- optim( fn = lik_llslm, c( 0, 1 ), ev=ev,
 			  cbind( M01,  M11 , M12 ),
     			  cbind( M02, t(M12), M22 ) ) )
     diag(M)[-(1:nx)] <- diag(M)[-(1:nx)] + 1
-    test    <-try( Minv	<- solve( M, tol = 1e-30 ) )
+    Minv	<- solve( M, tol = 1e-30 )
 
     m0		<- cy
     m1		<- Xy + V_XE %*% Ey
@@ -250,7 +250,7 @@ res	<- optim( fn = lik_llslm, c( 0, 1 ), ev=ev,
 			  cbind( M01,  M11 , M12 ),
     			  cbind( M02, t(M12), M22 ) ) )
     		diag(M)[-(1:nx)] <- diag(M)[-(1:nx)] + 1
-    		test    <-try( Minv	<- solve( M, tol = 1e-30 ) )
+    		Minv	<- solve( M, tol = 1e-30 )
 
     		m0		<- cy
     		m1		<- Xy + V_XE %*% Ey

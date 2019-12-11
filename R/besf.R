@@ -14,7 +14,7 @@ besf  	<- function( y, x = NULL, coords, method = "reml",
     	m[  -( 1:nx) ]			<- m[ -( 1:nx ) ] * evSqrt
 
     	test    <-try( Minv	<- solve( M, tol = 1e-25 ) )
-    	if( class( test ) == "try-error" ){
+    	if( class( test )[ 1 ] == "try-error" ){
     		loglik  <- Inf
     	} else {
     		b	<- Minv %*% m

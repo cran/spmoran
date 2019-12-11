@@ -95,7 +95,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
 
     	m[-(1:nx)]		<- m[ -( 1:nx ) ] * evSqrt
     	test			<-try(Minv	<- solve( M, tol = 1e-30 ))
-    	if(class(test)=="try-error"){
+    	if(class(test)[1] == "try-error"){
     		loglik  	<- Inf
     	} else {
     		b		<- Minv %*% m
@@ -348,7 +348,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     				try1	<- try( M0inv	<- solve( MM0,  tol = 1e-30 ), silent = TRUE )
     				try2	<- try( Mdet0	<- Mdet_f0( M = MM, M0 = MM0, id = idd,
     								par0_sel = par0_sel, emet = method ), silent = TRUE)
-    				er_dum	<- ( class(try1) =="try-error" ) | ( class(try2) =="try-error" )
+    				er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
     				if( er_dum == TRUE ){
     					M	<- M [ id_omit1 == 0, id_omit1 == 0 ]
     					M0	<- M0[ id_omit1 == 0, id_omit1 == 0 ]
