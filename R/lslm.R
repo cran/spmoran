@@ -304,5 +304,32 @@ res	<- optim( fn = lik_llslm, c( 0, 1 ), ev=ev,
     	sp_par[ 2, ]    <- sp_par[ 2, ] * sqrt( sig )
     }
 
-    return( list( b = b_par, s = sp_par, e = e_stat, de = DE_res, ie = IE_res, r = r_par, pred = pred, resid = resid ) )
+    result      <- list( b = b_par, s = sp_par, e = e_stat, de = DE_res, ie = IE_res, r = r_par,
+                         pred = pred, resid = resid, call = match.call() )
+    class( result ) <- "lslm"
+    return( result )
+}
+
+
+print.lslm <- function(x, ...)
+{
+  cat("Call:\n")
+  print(x$call)
+  cat("\n----Coefficients------------------------------\n")
+  print(x$b)
+  cat("\n----Spatial effects (lag)---------------------\n")
+  print(x$s)
+  cat("\n----Effects estimates-------------------------\n")
+  if( dim(x$de)[ 2 ] >1 ){
+    cat("\nDirect:\n")
+    print(x$de)
+    cat("\nIndirect:\n")
+    print(x$ie)
+  } else {
+    xx  <- data.frame( x$de, x$ie )
+    names(xx)<- c("Direct","Indirect")
+    print(xx)
+  }
+  cat("\n----Error statistics--------------------------\n")
+  print(x$e)
 }

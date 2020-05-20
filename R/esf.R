@@ -75,7 +75,7 @@ esf		<-function( y, x = NULL, vif = NULL, meig, fn = "r2" ){
     			obj	<- c( obj, Obj )
     			Obj_ind0<- ( 1:length( Obj_list ) ) * ( Obj_list == Obj )
     			Obj_ind	<- Obj_ind0[ Obj_ind0 != 0 ][ 1 ]
-				sf_sel_l<- sf_list[    Obj_ind ]
+				  sf_sel_l<- sf_list[    Obj_ind ]
     			sf_sel	<- sf     [ ,  Obj_ind ]
     			sf_list	<- sf_list[   -Obj_ind ]
     			sf	<- sf     [ , -Obj_ind ]
@@ -187,10 +187,11 @@ esf		<-function( y, x = NULL, vif = NULL, meig, fn = "r2" ){
     vif 	<- data.frame(diag( solve( cor( X ) ) ) )
     names(vif)	<- "VIF"
 
-    sf_moran   <-sum(r[,1]^2*ev[Sf_sel_l])/(ev[1]*sum(r[,1]^2))
+    len        <- 1:min(length(r[,1]), length(ev[Sf_sel_l]))
+    sf_moran   <-sum(r[,1][len]^2*ev[Sf_sel_l][len])/(ev[1]*sum(r[,1][len]^2))
     sf_par	<- data.frame( par = c( sd(SF), sf_moran )  )
     names( sf_par )   <- "Estimate"
-    rownames( sf_par )<- c( "spcomp_SE", "spcomp_Moran.I/max(Moran.I)" )
+    rownames( sf_par )<- c( "SE", "Moran.I/max(Moran.I)" )
 
     r2		  <- summary( sfmod )$adj.r.squared
     loglik	<- logLik( sfmod )
@@ -202,6 +203,23 @@ esf		<-function( y, x = NULL, vif = NULL, meig, fn = "r2" ){
     message( paste( "  ", nr, "/", ne, " eigenvectors are selected", sep = "" ) )
     }
 
-    other	<- list( x_id = x_id, sf_id = Sf_sel_l, model = "esf" )
-    return( list( b = b_par, s = sf_par, r = r, vif = vif, e = e_stat, sf = SF, pred = pred, resid = resid, other = other ) )
+    other	<- list( x_id = x_id, sf_id = Sf_sel_l, model = "esf", coords = meig$other$coords )
+    result<- list( b = b_par, s = sf_par, r = r, vif = vif, e = e_stat, sf = SF,
+                   pred = pred, resid = resid, other = other, call = match.call() )
+    class( result ) <- "esf"
+    return( result )
 }
+
+print.esf <- function(x, ...)
+{
+  cat("Call:\n")
+  print(x$call)
+  cat("\n----Coefficients------------------------------\n")
+  print(x$b)
+  cat("\n----Spatial effects (residuals)---------------\n")
+  print(x$s)
+  cat("\n----Error statistics--------------------------\n")
+  print(x$e)
+  invisible(x)
+}
+

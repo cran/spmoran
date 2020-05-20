@@ -158,5 +158,21 @@ lsem		<-function( y, x, weig, method = "reml" ){
     rownames( e_stat ) <- c( "resid_SE", "adjR2(cond)", "logLik", "AIC", "BIC" )
   }
 
-  return( list( b = b_par, s = sp_par, e = e_stat, r = r_par, pred = pred, resid = resid ) )
+  result  <-list( b = b_par, s = sp_par, e = e_stat, r = r_par, pred = pred, resid = resid, call = match.call() )
+  class( result ) <- "lsem"
+  return( result )
+}
+
+
+print.lsem <- function(x, ...)
+{
+  cat("Call:\n")
+  print(x$call)
+  cat("\n----Coefficients------------------------------\n")
+  print(x$b)
+  cat("\n----Spatial effects (residuals)---------------\n")
+  print(x$s)
+  cat("\n----Error statistics--------------------------\n")
+  print(x$e)
+  invisible(x)
 }

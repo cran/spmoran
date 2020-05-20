@@ -5,16 +5,20 @@
 predict0( mod, meig0, x0 = NULL, xgroup0 = NULL )
 }
 \description{
-This function predicts explained variables using eigenvector spatial filtering (ESF) or random effects ESF. The Nystrom extension is used to minimize the expected prediction error
+This function predicts explained variables using eigenvector spatial filtering (ESF) or random effects ESF. The Nystrom extension is used to perform a prediction minimizing the expected prediction error
 }
 \arguments{
 \item{mod}{ESF or RE-ESF model estimates. Output from \code{\link{esf}} or \code{\link{resf}}}
-\item{meig0}{Moran's eigenvectors at predicted sites. Output from \code{\link{meigen0}}}
+\item{meig0}{Moran eigenvectors at predicted sites. Output from \code{\link{meigen0}}}
 \item{x0}{Matrix of explanatory variables at predicted sites (N_0 x K). Default is NULL}
-\item{xgroup0}{Matrix of group indeces that may be group IDs (integers) or group names (N_0 x K_{group}). Default is NULL}
+\item{xgroup0}{Matrix of group IDs that may be group IDs (integers) or group names (N_0 x K_{group}). Default is NULL}
 }
 \value{
-\item{pred}{Matrix with the first column for the predicted values. The second and the third columns are the trend component and the spatial component in the predicted values. The remining columns are group effects (if any)}
+\item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group)}
+\item{c_vc}{Matrix of estimated non-spatially varying coefficients (NVCs) on x0 (N x K). Effective if nvc =TRUE in \code{\link{resf}}}
+\item{cse_vc}{Matrix of standard errors for the NVCs on x0 (N x K).Effective if nvc =TRUE in \code{\link{resf}}}
+\item{ct_vc}{Matrix of t-values for the NVCs on x0 (N x K). Effective if nvc =TRUE in \code{\link{resf}}}
+\item{cp_vc}{Matrix of p-values for the NVCs on x0 (N x K). Effective if nvc =TRUE in \code{\link{resf}}}
 }
 \references{
 Drineas, P. and Mahoney, M.W. (2005) On the Nystrom method for approximating a gram matrix for improved kernel-based learning. Journal of Machine Learning Research, 6 (2005), 2153-2175.
@@ -32,7 +36,7 @@ y	      <- d[, "CMEDV"]
 x       <- d[,c("ZN","INDUS", "NOX","RM", "AGE", "DIS")]
 coords  <- d[,c("LAT","LON")]
 
-d0      <- boston.c[-samp, ]  ## Data at unobserved sites
+d0      <- boston.c[-samp, ][1,]  ## Data at unobserved sites
 y0	    <- d0[, "CMEDV"]
 x0      <- d0[,c("ZN","INDUS", "NOX","RM", "AGE", "DIS")]
 coords0 <- d0[,c("LAT","LON")]
@@ -44,8 +48,14 @@ mod	    <- resf(y=y, x=x, meig=meig)
 # mod   <- esf(y=y,x=x,meig=meig)
 
 ############ Spatial prediction
-
 meig0 	<- meigen0( meig = meig, coords0 = coords0 )
 pred0   <- predict0( mod = mod, x0 = x0, meig0 = meig0 )
-pred0[1:10,]
+pred0$pred[1:10,]
+
+######################## If NVCs are assumed
+#mod2	  <- resf(y=y, x=x, meig=meig, nvc=TRUE)
+#pred02  <- predict0( mod = mod2, x0 = x0, meig0 = meig0 )
+#pred02$pred[1:10,]  # Predicted explained variables
+#pred02$c_vc[1:10,]  # Predicted NVCs
+
 }

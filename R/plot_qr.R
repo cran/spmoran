@@ -1,5 +1,5 @@
 
-plot_qr <- function( mod, pnum = 1, par = "b", cex.main = 28, cex.lab = 26, cex.axis = 24, lwd = 1.5 ){
+plot_qr <- function( mod, pnum = 1, par = "b", cex.main = 22, cex.lab = 20, cex.axis = 18, lwd = 1.5 ){
   if( is.null( mod$B ) ) {
     ci <- FALSE
   } else {

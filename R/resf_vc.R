@@ -1,41 +1,102 @@
 
-resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = "reml", penalty = "bic", allsvc=FALSE, maxiter = 30, sizelimit = 2000){
+resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst_nvc = FALSE,
+                       x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num=5,
+                       meig, method = "reml", penalty = "bic", maxiter = 30 ){
+
+  nvc_x       <- x_nvc
+  nvc_xconst  <- xconst_nvc
+
+  if( is.logical( x_sel ) ){
+    allsvc     <- !x_sel
+    allsvc_flag<-0
+  } else {
+    allsvc    <- x_sel
+    allsvc_flag<-1
+  }
+
+  if( is.logical( x_nvc_sel ) ){
+    allnvc_x    <- !x_nvc_sel
+    allnvc_x_flag<-0
+  } else {
+    allnvc_x    <- x_nvc_sel
+    allnvc_x_flag<-1
+  }
+
+  if( is.logical( xconst_nvc_sel ) ){
+    allnvc_xconst<- !xconst_nvc_sel
+    allnvc_xconst_flag<-0
+  } else {
+    allnvc_xconst<- xconst_nvc_sel
+    allnvc_xconst_flag<-1
+  }
+
+  #if( is.logical( sel_xgroup ) ){
+  #  allg<- !sel_xgroup
+  #} else {
+  #  allg<- sel_xgroup
+  #}
+
+  if( x_nvc[1]      == FALSE ) x_nvc_sel = FALSE
+  if( xconst_nvc[1] == FALSE ) xconst_nvc_sel = FALSE
+
+    sel_basis_vif <-function(test0, vif_max=15){
+    tres3<-TRUE
+    sel  <-1:dim(test0)[2]
+    while(tres3){
+      suppressWarnings(cor_test0<-cor(test0))
+      testt2<-try(vif <- diag(solve(cor_test0)), silent=TRUE)
+      if( class(testt2)=="try-error" ){
+        suppressWarnings(corr_0<-cor(test0))
+        diag(corr_0)<-0
+        cor_max <-apply(corr_0,2,max)
+        test0   <-test0[, -(which(cor_max == max(cor_max))[1])]
+        sel     <-sel[-(which(cor_max == max(cor_max))[1])]
+
+      } else {
+        if( max(vif)>vif_max ){
+          test0<-test0[,-(which(vif==max(vif))[1])]
+          sel     <-sel[-(which(vif==max(vif))[1])]
+        } else {
+          tres3<-FALSE
+        }
+      }
+    }
+    return(list(basis=test0,sel=sel))
+    }
 
     Mdet_f0	  	<- function( M, M0, id, par0_sel, emet ){
-    	if( emet == "ml" ){
-    		M	<- M [ id != 0, id != 0 ]
-    		M0	<- M0[ id != 0, id != 0 ]
-    		id	<- id[ id != 0 ]
-    	}
-
-    	if(sum( id != par0_sel ) == 0 ){
-    		term2	<- NULL
-    		term3_0	<- NULL
-    	} else {
-    		M0_sub		<- M0[ id != par0_sel, id != par0_sel ]
-    		term2		<- determinant( M0_sub )$modulus
-
-    		Msub_00		<- M[ id == par0_sel, id == par0_sel ]
-    		Msub_01		<- M[ id == par0_sel, id != par0_sel ]
-    		term3_0		<- Msub_00 - Msub_01 %*% solve( M0_sub, tol = 1e-30 ) %*% t( Msub_01 )
-    	}
-    	return(list(term2 = term2, term3_0 = term3_0))
+      if( emet == "ml" ){
+        M	  <- M [ id != 0, id != 0 ]
+        M0	<- M0[ id != 0, id != 0 ]
+        id	<- id[ id != 0 ]
+      }
+      if(sum( id != par0_sel ) == 0 ){
+        term2	  <- NULL
+        term3_0	<- M[ id == par0_sel, id == par0_sel ]
+      } else {
+        M0_sub	<- as.matrix(M0[ id != par0_sel, id != par0_sel ])
+        term2		<- determinant( M0_sub )$modulus
+        Msub_00	<- M[ id == par0_sel, id == par0_sel ]
+        Msub_01	<- M[ id == par0_sel, id != par0_sel ]
+        term3_0	<- Msub_00 - Msub_01 %*% solve( M0_sub, tol = 1e-30 ) %*% t( Msub_01 )#, tol = 1e-30
+      }
+      return(list(term2 = term2, term3_0 = term3_0))
     }
 
     Mdet_f	  	<- function( evSqrt, id, term2, term3_0, par0_sel ){
-    	if( is.null( term2 )  ){
-    		Mdet		<- sum( log( evSqrt ) ) * 2
-    	} else {
-    		term1		<- sum( log( evSqrt ) ) * 2
-    		diag( term3_0 ) <- diag( term3_0 ) + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
-    		term3	  	<- determinant( term3_0 )$modulus
-    		Mdet	  	<- term1 + term2 + term3
-    	}
-    	return(Mdet)
+      term1		<- sum( log( evSqrt ) ) * 2
+      diag( term3_0 ) <- diag( term3_0 ) + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+      term3	  <- determinant( term3_0 )$modulus
+      if( is.null( term2 )  ){
+        Mdet    <- term1 + term3
+      } else {
+        Mdet	  <- term1 + term2 + term3
+      }
+      return(Mdet)
     }
 
     lik_resf_vc		<- function( par0, par0_est, par0_id, par0_sel, ev, M, M0inv, M0inv_01, M0inv_00,
-    			m, yy, b_01, b_02, n, nx, nsv, ng, emet, term2, term3_0, null_dum2, id ){
+    			m, yy, b_01, b_02, n, nx, nsv, nnxf, nnsv, ng, emet, term2, term3_0, null_dum2, id ){
     	par		<- par0 ^ 2
     	par_est		<- par0_est ^ 2
     	par[ par0_id == par0_sel ]  <- par_est
@@ -46,10 +107,24 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	}
 
     	if( ng != 0 ){
-    		for( j in (( nsv + 1 ):( nsv + ng ))[ null_dum2[ -(1:nsv) ] == 0 ] ){
-    			xgg	<- rep( 1, sum( id == j ) )
-    			evSqrt	<- c( evSqrt, par[ 2 * nsv + ( j - nsv ) ] * xgg )
-    		}
+    	  for( j in (1:ng)[ null_dum2[ (( nsv + 1 ):( nsv + ng )) ] == 0 ] ){#null_dum2[ -(1:nsv) ] == 0
+    	    xgg	<- rep( 1, sum( id == nsv + j ) )
+    	    evSqrt	<- c( evSqrt, par[ 2 * nsv + j ] * xgg )
+    	  }
+    	}
+
+    	if( nnxf != 0 ){
+    	  for( i2 in (1:nnxf)[ null_dum2[ (nsv+ng+1):(nsv+ng+nnxf) ] == 0 ] ){
+    	    xgg	<- rep( 1, sum( id == ( nsv+ ng + i2 ) ) )
+    	    evSqrt	<- c( evSqrt, par[ 2 * nsv + ng + i2 ] * xgg )
+    	  }
+    	}
+
+    	if( nnsv != 0 ){
+    	  for( i2 in (1:nnsv)[ null_dum2[ (nsv+ng+nnxf+1):(nsv+ng+nnxf+nnsv) ] == 0 ] ){
+    	    xgg	<- rep( 1, sum( id == ( nsv + ng + nnxf + i2 ) ) )
+    	    evSqrt	<- c( evSqrt, par[ 2 * nsv + ng + nnxf + i2 ] * xgg )
+    	  }
     	}
 
     	Mdet		<- Mdet_f( id = id, par0_sel=par0_sel, term2 = term2, term3_0 = term3_0, evSqrt = evSqrt )
@@ -61,7 +136,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	diag(M0inv_00)	<- diag( M0inv_00 ) + evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
     	b_02_b		<- solve( M0inv_00, tol = 1e-30 ) %*% b_02
     	b_02		<- M0inv_01 %*% b_02_b
-      	b		<- b_01 - b_02
+      b		<- b_01 - b_02
     	sse		<- yy - 2 * t( b ) %*% m + t( b ) %*% M2 %*% b
     	dd		<- sse + sum( ( b[ -( 1:nx ) ] / evSqrt ) ^ 2 )
     	if( emet == "reml" ){
@@ -72,7 +147,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	return( loglik )
     }
 
-    lik_resf_vc0	<- function( par0, ev, M, m, yy, n, nx, nsv, ng, emet, null_dum4 ){
+    lik_resf_vc0	<- function( par0, ev, M, m, yy, n, nx, nsv, ng, nnxf, nnsv, emet, null_dum4 ){
     	par		<- par0 ^ 2
     	evSqrt		<- NULL
     	for( i in ( 1:nsv )[ null_dum4[ 1:nsv ] == 0 ] ){
@@ -81,10 +156,23 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	}
 
     	if( ng != 0 ){
-    		for( j in (( nsv +1 ):(nsv + ng ))[ null_dum4[ -(1:nsv )] == 0 ] ){
-    			xgg	<- rep( 1, sum( id == j ) )
-    			evSqrt	<- c( evSqrt, par[ 2 * nsv + ( j - nsv ) ] * xgg )
+    	  for( j in (1:ng)[ null_dum4[ (( nsv + 1 ):( nsv + ng )) ] == 0 ] ){#null_dum4[ -(1:nsv) ] == 0
+    			xgg	<- rep( 1, sum( id == nsv + j ) )
+    			evSqrt	<- c( evSqrt, par[ 2 * nsv + j ] * xgg )
     		}
+    	}
+    	if( nnxf != 0 ){
+    	  for( i2 in (1:nnxf)[ null_dum4[ (nsv+ng+1):(nsv+ng+nnxf) ] == 0 ] ){
+    	    xgg	<- rep( 1, sum( id == ( nsv+ ng + i2 ) ) )
+    	    evSqrt	<- c( evSqrt, par[ 2 * nsv + ng + i2 ] * xgg )
+    	  }
+    	}
+
+    	if( nnsv != 0 ){
+    	  for( i2 in (1:nnsv)[ null_dum4[ (nsv+ng+nnxf+1):(nsv+ng+nnxf+nnsv) ] == 0 ] ){
+    	    xgg	<- rep( 1, sum( id == ( nsv + ng + nnxf + i2 ) ) )
+    	    evSqrt	<- c( evSqrt, par[ 2 * nsv + ng + nnxf + i2 ] * xgg )
+    	  }
     	}
 
     	M[ -( 1:nx ), -( 1:nx ) ]	<- t(M[ -( 1:nx ), -( 1:nx ) ] * evSqrt ) * evSqrt
@@ -95,7 +183,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
 
     	m[-(1:nx)]		<- m[ -( 1:nx ) ] * evSqrt
     	test			<-try(Minv	<- solve( M, tol = 1e-30 ))
-    	if(class(test)[1] == "try-error"){
+    	if(class(test)[1]=="try-error"){
     		loglik  	<- Inf
     	} else {
     		b		<- Minv %*% m
@@ -113,26 +201,6 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	return( loglik[ 1 ] )
     }
 
-
-    if( is.null( x ) ){
-    	result	<- resf( y = y, x = xconst, xgroup = xgroup, meig = meig, method= method )
-    	b_par	  <- result$b
-    	sf_par	<- result$s
-    	e_stat	<- result$e
-    	b_vc	  <- NULL
-    	bse_vc	<- NULL
-    	bt_vc	  <- NULL
-    	bp_vc	  <- NULL
-    	pred	  <- result$pred
-    	resid	  <- result$resid
-    	vc	    <- NULL
-    	r	      <- result$r
-    	bpar_g2 <- result$b_g
-    	bg_par  <- result$s_g
-    	other	  <- result$other
-    	other$nxf<-other$nx
-
-    } else {
     	if( method == "reml" ){
     		lik_nam	<- "rlogLik"
     	} else if( method == "ml" ){
@@ -142,22 +210,42 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	if( n > 150000 ){
     	  message( paste( "Note: besf_vc function is now available for large samples. see help(besf_vc)" ) )
     	}
-    	X1	<- x
+
+
+    	if(is.null(xconst)){
+    	  nvc_xconst <- FALSE
+    	}
+
+    	nx0   <- 0   ########## added
+    	X1	  <- x
     	if( is.null( X1 ) == FALSE ){
     		X1	<- as.matrix( X1 )
     		if( is.numeric( X1 ) == FALSE ){
     			mode( X1 ) <- "numeric"
     		}
     		x_id	<- apply( X1, 2, sd ) != 0
-        	nx0	<- sum( x_id )
+        nx0	  <- sum( x_id )
     		if( nx0 == 0 ){
-   			X1	<- NULL
+   			  X1	  <- NULL
     			xname	<- NULL
     			x_id	<- NULL
     		} else {
     			X1	<- as.matrix( X1[ , x_id ] )
     			xname	<- names( as.data.frame( X1 ) )
     		}
+
+        if( allsvc_flag == 1 ){
+          allsvc_id        <- rep(FALSE,length(x_id))
+          allsvc_id[allsvc]<- TRUE
+          allsvc_id        <- allsvc_id[ x_id ]
+        }
+
+        if( allnvc_x_flag == 1 ){
+          allnvc_x_id        <- rep(FALSE,length(x_id))
+          allnvc_x_id[allnvc_x]<- TRUE
+          allnvc_x_id        <- allnvc_x_id[ x_id ]
+        }
+
     	} else {
     		xname	<- NULL
     		x_id	<- NULL
@@ -174,49 +262,148 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     		if( nxf == 0 ){
     			Xconst	<- NULL
     			xfname	<- NULL
-    			xf_id	<- NULL
+    			xf_id	  <- NULL
     		} else {
     			Xconst	<- as.matrix( Xconst[ , xf_id ] )
     			xfname	<- names( as.data.frame( Xconst ) )
     		}
+
+        if( allnvc_xconst_flag == 1 ){
+          allnvc_xconst_id               <- rep(FALSE,length(xf_id))
+          allnvc_xconst_id[allnvc_xconst]<- TRUE
+          allnvc_xconst_id  <- allnvc_xconst_id[ xf_id ]
+        }
     	} else {
     		xfname	<- NULL
-        	xf_id	<- NULL
-        	nxf	<- 0
+        xf_id	  <- NULL
+        nxf	    <- 0
     	}
 
-        if( ( nx0 > 0 ) && ( nxf > 0 ) ){
-        	for( dd  in 1:nx0  ){
-        	for( ddf in 1:nxf ){
-        		if( sum( X1[ , dd ] != Xconst[ , ddf ] ) == 0 ){
-        			stop( " x and xconst cannot have the same column" )
-        		}
-        	}
-        	}
-        }
+    	XX1_0	      <- list(NULL)
+    	XX1	        <- NULL
+    	#nvc_x_use   <- apply( X1, 2, function( x ) length( unique( x ))) >= 3
+    	if( is.logical( nvc_x[ 1 ] )&( nvc_x[ 1 ] == TRUE) ) nvc_x     <- 1:nx0
 
-    	nsv	<- ifelse( is.null( X1 ), 1, dim( X1 )[ 2 ] + 1 )
-    	nev0	<- min( round( n / nsv ) - 4, length( meig$ev ))
-    	if( is.null( sizelimit ) == FALSE ){
-    		if( nev0 * nsv + nxf > sizelimit ){
-    			nev1	<- round(( sizelimit - nxf ) / nsv )
-    			if( nev0 - nev1 > 0 ){
-    				if( nev1 < 10){
-    					nev1	<- 10
-    					message( paste( " Note: sizelimit was too small. It was replaced with ", nsv * 10 + nxf, sep="" ) )
-    				}
-    				nev0	<- nev1
-    			}
-    		}
+    	sel_basis_n <-list( NULL )
+    	if( is.logical( nvc_x[ 1 ] ) == FALSE ){
+    	  X1_nvc  <- as.matrix(X1[ , nvc_x ])
+    	  xxname	<- names( as.data.frame( X1 ) )[ nvc_x ]
+    	  nnsv    <- length( xxname )
+    	  np_xx     <-apply( X1_nvc,2,function( x ) length( unique( x )))
+    	  #np_xx     <-ifelse( np_xx < 15, round( np_xx * 0.75 ) ,11 )
+    	  np_xx     <-ifelse( np_xx < nvc_num/0.7, round( np_xx * 0.7 ) ,nvc_num )
+    	  np_xx_max <-round( n/nnsv ) - 2
+    	  np_xx[ np_xx > np_xx_max ] <-np_xx_max
+    	  np_xx[ np_xx < 2 ] <- 2
+
+    	  for( ii in 1:dim( X1_nvc )[ 2 ] ){
+    	     test<-TRUE
+    	     iiii<-0
+    	     while(test){
+    	       kkk  <- np_xx[ ii ]-iiii
+    	       knots<-seq(min( X1_nvc[ , ii ] ),max( X1_nvc[ , ii ] ),len=kkk+2)[2:(kkk+1)]
+
+    	       #testt<-try(XX1_00<- scale( poly( X1_nvc[ , ii ], np_xx[ ii ]-iiii )[ , -1 ] ), silent=TRUE)
+    	       testt<- try(XX1_00<- ns( X1_nvc[ ,ii ], knots = knots ), silent=TRUE)#replaced
+    	       test <- class(testt)[1] == "try-error"
+    	       iiii <- iiii+1
+    	     }
+
+    	     XX1_00      <- cbind( X1_nvc[,ii], XX1_00)
+    	     sel_basis_n[[ ii ]]    <- 1:dim(XX1_00)[2]
+    	     testt2<-try(XX1_00_mod <- sel_basis_vif( XX1_00, vif_max=15),silent=TRUE)
+    	     if(class(testt2)[1] != "try-error"){
+    	       XX1_00               <- XX1_00_mod$basis
+    	       sel_basis_n[[ ii ]]  <- XX1_00_mod$sel
+    	       np_xx[ ii ]          <- dim(XX1_00)[2]
+    	     } else {
+    	       np_xx[ ii ]          <- 0
+    	     }
+    	     if( np_xx[ ii ] > 2 ){
+    	         XX1_0[[ii]]<- scale( XX1_00 )
+    	         XX1	      <- cbind( XX1, X1_nvc[, ii ] * XX1_0[[ii]] )
+    	         #np_xx[ ii ]<- np_xx[ ii ]  - iiii
+    	     } else {
+    	         XX1_0[[ii]]<- 0
+    	         np_xx[ ii ]<- 0
+    	     }
+    	     #np_xx[ ii ]<- ifelse( ( np_xx[ii] <= 2)|(class(testt2)[1] == "try-error"), 0, np_xx[ii])# added
+    	  }
+    	} else {
+    	  nnsv      <- 0
+    	  np_xx     <- NULL
     	}
 
+    	XXconst_0	  <- list( NULL )
+    	XXconst	    <- NULL
+    	#nvc_xconst_use <- apply( Xconst,2,function( x ) length( unique( x ))) >= 3
+    	if( is.logical( nvc_xconst[ 1 ] )&( nvc_xconst[ 1 ] == TRUE) ) nvc_xconst<- 1:nxf
+
+    	sel_basis_c <-list( NULL )
+    	if( is.logical( nvc_xconst[ 1 ] ) ==FALSE ){
+    	  Xconst_nvc<- as.matrix( Xconst[ , nvc_xconst ] )
+    	  xxfname	  <- names( as.data.frame( Xconst ) )[ nvc_xconst ]
+    	  nnxf      <- length( xxfname )
+    	  np_xxconst       <-apply( Xconst_nvc,2,function( x ) length( unique( x )))
+    	  #np_xxconst      <-ifelse( np_xxconst < 15, round( np_xxconst * 0.75 ) ,11 )
+    	  np_xxconst       <-ifelse( np_xxconst < nvc_num/0.7, round( np_xxconst * 0.7 ) ,nvc_num )
+    	  np_xxconst_max <-round( n/nnxf ) - 2
+    	  np_xxconst[ np_xxconst > np_xxconst_max ] <-np_xxconst_max
+    	  np_xxconst[ np_xxconst < 2 ] <- 2
+
+    	  for( ii in 1:dim( Xconst_nvc )[ 2 ] ){
+    	    test<-TRUE
+    	    iiii<-0
+    	    while(test){
+    	      kkk      <- np_xxconst[ ii ]-iiii
+    	      knots    <-seq(min( Xconst_nvc[ ,ii ] ),max( Xconst_nvc[ ,ii ] ),len=kkk+2)[2:(kkk+1)]
+    	      #testt<-try(XXconst_00<- scale( poly( Xconst_nvc[ , ii ], np_xxconst[ ii ]-iiii )[ , -1 ] ), silent=TRUE)
+    	      testt<- try(XXconst_00<- ns( Xconst_nvc[ , ii], knots = knots ), silent=TRUE)
+    	      test <- class(testt)[1] == "try-error"
+    	      iiii <- iiii+1
+    	    }
+
+    	    XXconst_00<- cbind( Xconst_nvc[,ii], XXconst_00)
+    	    sel_basis_c[[ ii ]]    <- 1:dim(XXconst_00)[2]
+    	    testt2<-try(XXconst_00_mod     <- sel_basis_vif( XXconst_00, vif_max=15),silent=TRUE)
+    	    if(class(testt2)[1] != "try-error"){
+    	      XXconst_00       <- XXconst_00_mod$basis
+    	      sel_basis_c[[ii]]<- XXconst_00_mod$sel
+    	      np_xxconst[ ii ] <- dim(XXconst_00)[2]
+    	    } else {
+    	      np_xxconst[ ii ]<- 0
+    	    }
+    	    if( np_xxconst[ ii ] > 2 ){
+    	      XXconst_0[[ii]]<- scale( XXconst_00 )
+    	      XXconst	       <- cbind( XXconst, Xconst_nvc[, ii ] * XXconst_0[[ii]] )
+    	      #np_xx[ ii ]<- np_xx[ ii ]  - iiii
+    	    } else {
+    	      XXconst_0[[ii]]<- 0
+    	      np_xxconst[ ii ]<- 0
+    	    }
+    	  }
+    	} else {
+    	 nnxf         <- 0
+    	 np_xxconst   <- NULL # added
+    	}
+
+    	if( ( nx0 > 0 ) & ( nxf > 0 ) ){
+    	  dup      <-duplicated(cbind(X1,Xconst),MARGIN=2)
+    	  if(sum(dup)>0){
+    	    stop( "x and xconst cannot have the same column" )
+    	  }
+    	}
+
+    	nsv	  <- ifelse( is.null( X1 ),1, dim( X1 )[ 2 ] + 1 )
+    	nev0	<- min( round( n /nsv ) - 2, length( meig$ev ))
+    	nev0  <- max(nev0, 3)
     	meig$sf	<- meig$sf[ , 1 : nev0 ]
     	meig$ev	<- meig$ev[   1 : nev0 ]
 
-    	ev	<- meig$ev
-    	X2	<- meig$sf
-    	meig0<- X2
-    	id	<- c( rep( 0, nsv ), rep( 0, nxf ), rep( 1, length( ev ) ) )
+    	ev	    <- meig$ev
+    	X2	    <- meig$sf
+    	meig0   <- X2
+    	id	    <- c( rep( 0, nsv ), rep( 0, nxf ), rep( 1, length( ev ) ) )
     	if( nsv >= 2 ){
     		for( i in 1:( nsv - 1 ) ){
    			  X2  <- cbind( X2, X1[, i ] * meig0 )
@@ -227,7 +414,6 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	if( is.null( xgroup ) == FALSE ){
     	  xgroup<- data.frame(xgroup)
     		ng	<- dim( xgroup )[ 2 ]
-    		sizelimit<- sizelimit + ng + 1
     		xg_id0	<- nsv + 1
     		xg_idid2<- NULL
     		xg_link_id <- list( NULL )
@@ -236,7 +422,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     			xg0	  <- sparse.model.matrix( ~ 0 + xg00 )
     			xg0s	<- Matrix::colSums( xg0 )
     			xg_idid	<- max( which( xg0s == max( xg0s ) ) )
-    			Xg0	  <- xg0[ , -xg_idid ]
+    			Xg0	  <- as.matrix( xg0[ , -xg_idid ] )
     			xg_id1	<- rep( xg_id0, dim( Xg0 )[2] )
     			if( ff == 1 ){
     				Xg	<- Xg0
@@ -260,58 +446,105 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     		ng	<- 0
     	}
 
-    	X0	<- as.matrix( cbind( 1, Xconst, X1 ) )
+    	pp_id    <-max( id )## added
+    	if( is.logical( nvc_xconst[ 1 ] ) == FALSE ){#&( nvc_xconst[ 1 ] == FALSE ))
+    	  xxc_id   <-NULL
+    	  for(pp in 1:length(np_xxconst)){
+    	    xxc_id <- c(xxc_id, rep(pp_id + pp, np_xxconst[pp]))## added
+    	  }
+    	  id	   <- c( id, xxc_id )
+    	  X2     <- cbind( X2, XXconst )
+    	  pp_id  <- pp_id + length(np_xxconst)
+    	}
+
+    	if( is.logical( nvc_x[ 1 ] ) == FALSE ){#)&( nvc_x[ 1 ] == FALSE )
+    	  xx_id   <-NULL
+    	  for(pp in 1:length(np_xx)){
+    	    xx_id <- c(xx_id, rep(pp_id + pp, np_xx[pp]))
+    	  }
+    	  id	   <- c( id, xx_id )
+    	  X2     <- cbind( X2, XX1 )
+    	}
+
+      if( is.null( Xconst)&is.null( X1 )){
+        X0	<- as.matrix( rep(1,n) )
+      } else {
+        X0	<- as.matrix( cbind( 1, Xconst, X1 ) )
+      }
     	Mo 	<- crossprod( X0 )
     	mo	<- crossprod( X0, y )
     	parVmax_sq <- sqrt( sd( y ) / sd( y - X0 %*% ( solve( Mo ) %*% mo ) ) )
 
-    	X	<- as.matrix( cbind( X0, X2 ) )
+    	X	  <- as.matrix( cbind( X0, X2 ) )
     	nx	<- dim( X )[ 2 ] - dim( X2 )[ 2 ]
-    	M   	<- crossprod( X )
-    	m	<- crossprod( X, y )
-    	yy     <- sum( y ^ 2 )
+    	M   <- crossprod( X )
+    	m	  <- crossprod( X, y )
+    	yy  <- sum( y ^ 2 )
     	if( penalty == "aic" ){
     		pen	<- 2
     	} else if( penalty == "bic" ){
     		pen	<- log( n )
     	}
-    	par0	<- rep( 1, 2 * nsv )
-    	Par	<- par0
+
+    	par0	  <- rep( 1, 2 * nsv )
+    	par0[1] <- parVmax_sq / 3
     	par0_est<- c( 1, 1 )
     	par0_id	<- rep( 1:nsv, 2 )
     	null_dum<- rep( 0, nsv )
+
     	if( is.null( xgroup ) == FALSE ){
-    		par0	<- c( par0, rep( 1, ng ) )
-    		Par	<- par0
-    		par0_id	<- c( par0_id , nsv + ( 1 : ng ) )
+    		par0	<- c( par0, rep( parVmax_sq/3, ng ) )## changed
+    		par0_id	<- c( par0_id , max(par0_id) + ( 1 : ng ) )
     		null_dum<- c( null_dum, rep( 0, ng ) )
     	}
 
-    	obj	<- sd( y )
-	    LL	<- NULL
-    	res_old	<- Inf
-    	n_omit	<- 0
-    	iter	<- 1
-    	while( ( obj > sd( y ) * 0.0001 ) & ( iter <= maxiter ) ){
+    	if( is.logical( nvc_xconst[ 1 ] ) == FALSE ){#nvc_xconst[ 1 ] != FALSE
+    	  par0	  <- c( par0, rep( 1, nnxf ) )
+    	  par0_id	<- c( par0_id , max(par0_id) + ( 1:nnxf ) )
+    	  null_dum0<- rep( 0, nnxf ) # added
+    	  null_dum0[np_xxconst==0]<-1# added
+    	  null_dum<- c( null_dum, null_dum0 )
+    	}
+    	if( is.logical( nvc_x[ 1 ] ) == FALSE ){#nvc_x[ 1 ] != FALSE
+    	  par0	<- c( par0, rep( 1, nnsv ) )
+    	  par0_id	<- c( par0_id , max(par0_id) + ( 1:nnsv ) )
+    	  null_dum0<- rep( 0, nnsv ) # added
+    	  null_dum0[np_xx==0]<-1     # added
+    	  null_dum<- c( null_dum, null_dum0 )
+    	}
 
-    		print( paste( "-------  Iteration ", iter, "  -------", sep = "" ) )
+    	id_exist<-unique(id)[unique(id)>0]
+    	par0[(par0_id %in% id_exist) ==FALSE]<-0
+    	Par    <-par0
+
+    	obj	   <- sd( y )
+	    LL	   <- NULL
+    	res_old<- Inf
+    	n_omit <- 0
+    	iter	 <- 1
+    	gmess  <- 1
+    	warn   <- FALSE
+    	while( (( obj > sd( y ) * 0.0001 ) & ( iter <= maxiter ))|( iter <= 4 ) ){
+
+    		if( !is.null(x) ) print( paste( "-------  Iteration ", iter, "  -------", sep = "" ) )
+
     		LL0	<- LL
     		n_omit	<- 0
-    		for( par0_sel in 1:( nsv + ng ) ){
+    		for( par0_sel in (1:( nsv+ ng + nnxf + nnsv ))[id_exist]){
     			evSqrt	<- NULL
     			par0_sq	<- par0 ^ 2
     			for( i in 1:nsv ){
-    				evv  	<- ev ^ par0_sq[ nsv + i ] * sum( ev ) / sum( ev ^ par0_sq[ nsv + i ] )
+    				evv  	  <- ev ^ par0_sq[ nsv + i ] * sum( ev ) / sum( ev ^ par0_sq[ nsv + i ] )
     				evSqrt	<- c( evSqrt, par0_sq[ i ] * sqrt( evv ) )
     			}
 
     			M0	<- M
     			for( j in 1:nsv ){
-    			    if( j != par0_sel ){
-    				id_sub	<- ( id == j )
-    				diag( M0[ id_sub, id_sub ] )<-
-    				diag( M0[ id_sub, id_sub ] ) + 1/evSqrt[ id[ - ( 1:nx ) ] == j ] ^ 2
-    			    }
+    			  if( j != par0_sel ){
+    				  id_sub	<- ( id == j )
+    				  diag( M0[ id_sub, id_sub ] )<-
+    				  diag( M0[ id_sub, id_sub ] ) + 1/evSqrt[ id[ - ( 1:nx ) ] == j ] ^ 2
+    			  }
     			}
 
     			if( ng != 0 ){
@@ -319,14 +552,56 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     					xgg	<- rep( 1, sum( id == ( nsv + i2 ) ) )
     					evSqrt	<- c( evSqrt, par0_sq[ 2 * nsv + i2 ] * xgg )
     				}
-
     				for( j2 in 1:ng ){
-    				    if( j2 != ( par0_sel - nsv ) ){
-    					id_sub	<- ( id == ( j2 + nsv ) )
-    					diag( M0[ id_sub, id_sub ] )<-
-    					diag( M0[ id_sub, id_sub ] ) + 1/evSqrt[ id[ - ( 1:nx ) ] == (j2 + nsv) ] ^ 2
-    			 	   }
+    				  if( j2 != ( par0_sel - nsv ) ){
+    					  id_sub	<- ( id == ( j2 + nsv ) )
+    					  if( sum(id_sub)==1 ){
+    					    M0[ id_sub, id_sub ] <- M0[ id_sub, id_sub ] + 1/evSqrt[ id[ - ( 1:nx ) ] == (j2 + nsv) ] ^ 2
+    					  } else {
+    					    diag( M0[ id_sub, id_sub ] )<-
+    					    diag( M0[ id_sub, id_sub ] ) + 1/evSqrt[ id[ - ( 1:nx ) ] == (j2 + nsv) ] ^ 2
+    					  }
+    				  } else {############################### added
+    				    id_sub	<- ( id == ( j2 + nsv ) )
+    				    g_add   <- (1/evSqrt[ id[ - ( 1:nx ) ] == (j2 + nsv) ] ^ 2)/100
+
+    				    if( sum(id_sub)==1 ){
+    				      M0[ id_sub, id_sub ]        <- M0[ id_sub, id_sub ] + g_add
+    				    } else {
+    				      diag( M0[ id_sub, id_sub ] )<- diag( M0[ id_sub, id_sub ] ) + g_add
+    				    }
+    			 	  }       ############################### added
     				}
+    			}
+
+    			if( nnxf != 0 ){
+    			  for( i2 in 1:nnxf ){
+    			    xgg	<- rep( 1, sum( id == ( nsv+ ng + i2 ) ) )
+    			    evSqrt	<- c( evSqrt, par0_sq[ (2 * nsv + ng ) + i2 ] * xgg )
+    			  }
+
+    			  for( j2 in 1:nnxf ){
+    			    if( j2 != ( par0_sel - nsv - ng ) ){
+    			      id_sub	<- ( id == ( j2 + nsv + ng ) )
+    			      diag( M0[ id_sub, id_sub ] )<-
+    			        diag( M0[ id_sub, id_sub ] ) + 1/evSqrt[ id[ - ( 1:nx ) ] == (j2 + nsv + ng) ] ^ 2
+    			    }
+    			  }
+    			}
+
+    			if( nnsv != 0 ){
+    			  for( i2 in 1:nnsv ){
+    			    xgg	<- rep( 1, sum( id == ( nsv + ng + nnxf + i2 ) ) )
+    			    evSqrt	<- c( evSqrt, par0_sq[ (2 * nsv + ng + nnxf ) + i2 ] * xgg )
+    			  }
+
+    			  for( j2 in 1:nnsv ){
+    			    if( j2 != ( par0_sel - nsv - ng - nnxf ) ){
+    			      id_sub	<- ( id == ( j2 + nsv + ng + nnxf) )
+    			      diag( M0[ id_sub, id_sub ] )<-
+    			        diag( M0[ id_sub, id_sub ] ) + 1/evSqrt[ id[ - ( 1:nx ) ] == (j2 + nsv + ng + nnxf) ] ^ 2
+    			    }
+    			  }
     			}
 
     			null_dum2<- null_dum
@@ -337,128 +612,205 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     			mm	<- m [ null_dum3 ]
     			idd	<- id[ null_dum3 ]
     			id_omit1<- c( diff( id ), 1)
-    			if( ng != 0 )	id_omit1[ id > nsv ] <- 0
+    			#if( ng != 0 )	id_omit1[ id > nsv ] <- 0
+    			#if( ng != 0 )	id_omit1[( nsv < id ) & ( id <= nsv + ng )] <- 0
+    			id_omit2_0<- which( id_omit1 != 0 )                           ### changed
+    			id_omit2<-id_omit2_0[2:(nsv + 1)]                             ### changed
+    			id_omit1[ id_omit2_0[(id_omit2_0 %in% id_omit2)==FALSE] ] <- 0### changed
 
-    			id_omit2<- which( id_omit1 != 0 )
-    			id_omit1[ id_omit2[ 1 ]] <- 0
+    			sstop <-FALSE
+    			if( ( ng != 0 )&( nsv < par0_sel )&( par0_sel <= nsv + ng ) ){
+    			  if( rcond( MM0 ) < 1e-30 ){
+    			      loglik	<- ( - 1 / 2 ) * res_old
+    			      par0[ par0_id == par0_sel ] 	<- 0
+    			      null_dum[ par0_sel ]		<- 1
+    			      loglik 	<- ( -1 / 2 ) * c( res_ref )
+    			      res_old	<- res_ref
+    			      score   <- res_ref+ pen * (nx+sum(par0!=0)+1)
 
-    			er_dum	<- TRUE
-    			n_omit0	<- 0
-    			while( er_dum == TRUE ){
-    				try1	<- try( M0inv	<- solve( MM0,  tol = 1e-30 ), silent = TRUE )
-    				try2	<- try( Mdet0	<- Mdet_f0( M = MM, M0 = MM0, id = idd,
+    			      #if(gmess == 1 ){
+    			        message( paste( "Note:", "group effect", par0_sel - nsv, "is omitted to stablize the estimates", sep = " " ) )
+    			      #}
+    			      gmess   <- gmess + 1
+    			      warn    <- TRUE
+    			      sstop   <- TRUE
+    			  }
+    			}
+
+    			if( sstop==FALSE ){
+
+    			  er_dum	<- TRUE
+    		  	n_omit0	<- 0
+    		  	while( er_dum == TRUE ){
+    				  try1	<- try( M0inv	<- solve( MM0,  tol = 1e-30 ), silent = TRUE )
+    				  try2	<- try( Mdet0	<- Mdet_f0( M = MM, M0 = MM0, id = idd,
     								par0_sel = par0_sel, emet = method ), silent = TRUE)
-    				er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
-    				if( er_dum == TRUE ){
-    					M	<- M [ id_omit1 == 0, id_omit1 == 0 ]
-    					M0	<- M0[ id_omit1 == 0, id_omit1 == 0 ]
-    					m	<- m [ id_omit1 == 0 ]
-    					id	<- id[ id_omit1 == 0 ]
-    					X	<- X [, id_omit1 == 0 ]
-    					null_dum3<- null_dum3[ id_omit1 == 0 ]
+    				  er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
 
-    					MM	<- M [ null_dum3, null_dum3 ]
-    					MM0	<- M0[ null_dum3, null_dum3 ]
-    					mm	<- m [ null_dum3 ]
-    					idd	<- id[ null_dum3 ]
+    				  if( er_dum == TRUE ){
+    					  M	<- M [ id_omit1 == 0, id_omit1 == 0 ]
+    					  M0	<- M0[ id_omit1 == 0, id_omit1 == 0 ]
+    					  m	<- m [ id_omit1 == 0 ]
+    					  id	<- id[ id_omit1 == 0 ]
+    					  X	<- X [, id_omit1 == 0 ]
+    					  null_dum3<- null_dum3[ id_omit1 == 0 ]
 
-    					id_omit1<- c( diff( id ), 1)
-    					if( ng != 0 )	id_omit1[ id > nsv ] <- 0
+    					  MM	<- M [ null_dum3, null_dum3 ]
+    					  MM0	<- M0[ null_dum3, null_dum3 ]
+    					  mm	<- m [ null_dum3 ]
+    					  idd	<- id[ null_dum3 ]
 
-    					id_omit2<- which( id_omit1 != 0 )
-    					id_omit1[ id_omit2[ 1 ] ] 	<- 0
-    					n_omit0	<- n_omit0 + 1
-    				}
+    					  id_omit1<- c( diff( id ), 1)
+    					  #if( ng != 0 )	id_omit1[ id > nsv ] <- 0
+    					  #if( ng != 0 )	id_omit1[( nsv < id ) & ( id <= nsv + ng )] <- 0 ## deleted
 
-    				if( n_omit0 >= 1000){
-    				  stop( " Singular fit. Reduce some model elements" )
-    				}
-    			}
+    					  id_omit2_0<- which( id_omit1 != 0 )                           ### changed
+    					  id_omit2<-id_omit2_0[2:(nsv + 1)]                             ### changed
+    					  id_omit1[ id_omit2_0[(id_omit2_0 %in% id_omit2)==FALSE] ] <- 0### changed
+    					  n_omit0	<- n_omit0 + 1
+    					  warn    <- TRUE
+    				  }
 
-    			if( n_omit0 > 0 ){
-    			  message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates", sep = "" ) )
-    			}
-    			n_omit	<- c( n_omit, n_omit0 )
+    				  if( n_omit0 >= 1000){
+    				    stop( " Singular fit. Simplify the model" )
+    				  }
+    			  }
 
-    			ev	<- ev     [   1:sum( id == 1 ) ]
-    			meig$sf	<- meig$sf[ , 1:sum( id == 1 ) ]
-    			term2	<- Mdet0$term2
-    			term3_0	<- Mdet0$term3_0
+    			  if( n_omit0 > 0 ){
+    			    message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates (dummy variable in x is a typical cause)", sep = "" ) )
+    			  }
+    			  n_omit	<- c( n_omit, n_omit0 )
 
-    			if( min( par0[ par0_id == par0_sel ] ) >= 1e-5 ){
-    				par00	<- par0[ par0_id == par0_sel ]
-    			} else {
-    				par00_id<- max( which( apply(Par[,par0_id == par0_sel], 1, min) != 0 ) )
-    				par00	<- Par[ par00_id, par0_id == par0_sel ]
-    			}
+    			  ev	<- ev     [   1:sum( id == 1 ) ]
+    			  meig$sf	<- meig$sf[ , 1:sum( id == 1 ) ]
+    			  term2	<- Mdet0$term2
+    			  term3_0	<- Mdet0$term3_0
 
-    			if( n_omit0 > 0 ){
-    				res_old <- lik_resf_vc0( par0, ev = ev, M = MM, m = mm, yy = yy,
-    					 n = n, nx = nx, nsv = nsv, ng = ng, emet = method, null_dum4 = null_dum2 )
-    			}
+    			  if( min( par0[ par0_id == par0_sel ] ) >= 1e-5 ){
+    				  par00	<- par0[ par0_id == par0_sel ]
+    			  } else {
+    			    if(par0_sel<=nsv){
+    				    par00_id<- max( which( c(apply(Par[,par0_id == par0_sel], 1, min)) != 0 ) )#fixed
+    			    } else {
+    			      par00_id<- max( which( Par[,par0_id == par0_sel] != 0 ) )## fixed
+    			    }
 
-    			M0inv_01<- M0inv[ 		, idd == par0_sel ]
-    			M0inv_00<- M0inv[ idd ==par0_sel, idd == par0_sel ]
-    			b_01	<- M0inv %*% mm
-    			b_02	<- t( M0inv_01 ) %*% mm
+    				  par00	<- Par[ par00_id, par0_id == par0_sel ]
+    			  }
 
-    			if( par0_sel == 1){
-    			  llim    <- c( parVmax_sq / 1000, 1e-03)
-    			  ulim    <- c( parVmax_sq, 4 )
-    			  omethod <- "L-BFGS-B"
-    			  res    	<- optim( fn = lik_resf_vc, par00, par0 = par0, ev = ev, M = MM, M0inv = M0inv,
+    			  if( n_omit0 > 0 ){
+    				  res_old <- lik_resf_vc0( par0, ev = ev, M = MM, m = mm, yy = yy,nnxf=nnxf,nnsv=nnsv,
+    					   n = n, nx = nx, nsv = nsv, ng = ng, emet = method, null_dum4 = null_dum2 )
+    		  	}
+
+    			  M0inv_01<- M0inv[ 		, idd == par0_sel ]
+    			  M0inv_00<- M0inv[ idd ==par0_sel, idd == par0_sel ]
+    			  b_01	<- M0inv %*% mm
+    			  b_02	<- t( M0inv_01 ) %*% mm
+
+    		  	if( par0_sel == 1){
+    			    llim    <- c( parVmax_sq / 1000, 1e-03)
+    			    ulim    <- c( parVmax_sq, 4 )
+    			    omethod <- "L-BFGS-B"##### error length of b[-(1:nx)] and evSqrt are inconsistent
+
+    			    #M = MM; M0inv = M0inv; m = mm; emet = method; id = idd
+    			    #lower = llim; upper = ulim; method = omethod
+    			    res    	<- optim( fn = lik_resf_vc, par00, par0 = par0, ev = ev, M = MM, M0inv = M0inv,
     			                    M0inv_01 = M0inv_01, M0inv_00 = M0inv_00, b_01 = b_01, b_02 = b_02,
-    			                    term2 = term2, term3_0 = term3_0, m = mm, yy = yy,
+    			                    term2 = term2, term3_0 = term3_0, m = mm, yy = yy,nnxf=nnxf,nnsv=nnsv,
     			                    n = n, nx = nx, nsv = nsv, ng = ng, emet = method, id = idd,
     			                    par0_sel = par0_sel, par0_id = par0_id, null_dum2 = null_dum2,
     			                    lower = llim, upper = ulim, method = omethod )
-    			} else if( par0_sel <= nsv ){
-    			  res    	<- optim( fn = lik_resf_vc, par00, par0 = par0, ev = ev, M = MM, M0inv = M0inv,
-    			                    M0inv_01 = M0inv_01, M0inv_00 = M0inv_00, b_01 = b_01, b_02 = b_02,
-    			                    term2 = term2, term3_0 = term3_0, m = mm, yy = yy,
-    			                    n = n, nx = nx, nsv = nsv, ng = ng, emet = method, id = idd,
-    			                    par0_sel = par0_sel, par0_id = par0_id, null_dum2 = null_dum2 )
-    			} else {
-    			  res    	<- optimize( f = lik_resf_vc, lower = 0.001, upper = 100,par00, par0 = par0, ev = ev, M = MM, M0inv = M0inv,
-    			                    M0inv_01 = M0inv_01, M0inv_00 = M0inv_00, b_01 = b_01, b_02 = b_02,
-    			                    term2 = term2, term3_0 = term3_0, m = mm, yy = yy,
-    			                    n = n, nx = nx, nsv = nsv, ng = ng, emet = method, id = idd,
-    			                    par0_sel = par0_sel, par0_id = par0_id, null_dum2 = null_dum2 )
-    			  res$value	<- c( res$objective )
-    			  res$par	<- c( res$minimum )
-    			}
+    			    res_int <- res
 
-    			if( ( iter > 3 ) & ( res$value > res_old ) ){
-    				loglike	<- ( - 1 / 2 ) * res_old
-    			} else {
-    				if( ( par0_sel != 1 ) & ( par0_sel <= nsv ) ){
-    					MM_ref 	<- MM [ idd != par0_sel, idd != par0_sel ]
-    					mm_ref	<- mm [ idd != par0_sel ]
-    					null_dum4<- null_dum2
-    					null_dum4[ par0_sel ] <- 1
-    					res_ref <- lik_resf_vc0( par0, ev = ev, M = MM_ref, m = mm_ref, yy = yy,
+    			  } else if( par0_sel <= nsv ){
+    			    res    	<- optim( fn = lik_resf_vc, par00, par0 = par0, ev = ev, M = MM, M0inv = M0inv,
+    			                    M0inv_01 = M0inv_01, M0inv_00 = M0inv_00, b_01 = b_01, b_02 = b_02,
+    			                    term2 = term2, term3_0 = term3_0, m = mm, yy = yy,nnxf=nnxf,nnsv=nnsv,
+    			                    n = n, nx = nx, nsv = nsv, ng = ng, emet = method, id = idd,
+    			                    par0_sel = par0_sel, par0_id = par0_id, null_dum2 = null_dum2 )
+
+    			  } else if( par0_sel <= nsv+ng ){#### changed
+    			    res    	<- optimize( f = lik_resf_vc, lower = parVmax_sq/1000, upper = parVmax_sq, par00,
+    			                         par0 = par0, ev = ev, M = MM, M0inv = M0inv,
+    			                         M0inv_01 = M0inv_01, M0inv_00 = M0inv_00, b_01 = b_01, b_02 = b_02,
+    			                         term2 = term2, term3_0 = term3_0, m = mm, yy = yy,nnxf=nnxf,nnsv=nnsv,
+    			                         n = n, nx = nx, nsv = nsv, ng = ng, emet = method, id = idd,
+    			                         par0_sel = par0_sel, par0_id = par0_id, null_dum2 = null_dum2 )
+    			    res$value	<- c( res$objective )
+    			    res$par	<- c( res$minimum )
+
+    			  } else {
+    			    res    	<- optimize( f = lik_resf_vc, lower = parVmax_sq/10^5, upper = 10^10, par00, par0 = par0, ev = ev,
+    			                    M = MM, M0inv = M0inv,
+    			                    M0inv_01 = M0inv_01, M0inv_00 = M0inv_00, b_01 = b_01, b_02 = b_02,
+    			                    term2 = term2, term3_0 = term3_0, m = mm, yy = yy,nnxf=nnxf,nnsv=nnsv,
+    			                    n = n, nx = nx, nsv = nsv, ng = ng, emet = method, id = idd,
+    			                    par0_sel = par0_sel, par0_id = par0_id, null_dum2 = null_dum2 )
+    			    res$value	<- c( res$objective )
+    			    res$par	<- c( res$minimum )
+    			  }
+
+    			  if( ( iter > 3 ) & ( res$value > res_old ) ){
+    				  loglik	<- ( - 1 / 2 ) * res_old
+    			  } else {
+    				  if( par0_sel != 1 ){#### ) & ( par0_sel <= nsv ))|( par0_sel > nsv + ng )
+    					  MM_ref 	<- MM [ idd != par0_sel, idd != par0_sel ]
+    					  mm_ref	<- mm [ idd != par0_sel ]
+    					  null_dum4<- null_dum2
+    					  null_dum4[ par0_sel ] <- 1
+    					  res_ref <- lik_resf_vc0( par0, ev = ev, M = MM_ref, m = mm_ref, yy = yy,nnxf=nnxf,nnsv=nnsv,
     						 n = n, nx = nx, nsv = nsv, ng = ng, emet = method, null_dum4 = null_dum4 )
-    				} else {
-    					res_ref	<- Inf
-    				}
+    				  } else {
+    					  res_ref	<- Inf
+    				  }
 
-    				if( (res_ref < res$value + pen)&(allsvc==FALSE)){
+    			    np_add       <- length(par00)
+    			    flag         <- 0
+    			    if( par0_sel <= nsv ){
+    			      if( allsvc_flag == 0 ){   ####### added
+    			        allvc  <- allsvc
+    			      } else {
+    			        flag   <-1
+    			        allvc  <- c(TRUE, allsvc_id)[ par0_sel ] # including intercept
+    			      }
+    			    } else if( ( nsv < par0_sel )&( par0_sel <= nsv + ng )){
+    			      allvc  <- TRUE#allg
+    			    } else if( ( nsv +ng < par0_sel )&( par0_sel <= nsv + ng + nnxf )){
+    			      if( allnvc_xconst_flag == 0 ){   ####### added
+    			        allvc  <- allnvc_xconst
+    			      } else {
+    			        flag   <-1
+    			        allvc  <- allnvc_xconst_id[ par0_sel - nsv - ng ]
+    			      }
+    			    } else {
+    			      if( allnvc_x_flag == 0 ){   ####### added
+    			        allvc  <- allnvc_x
+    			      } else {
+    			        flag   <-1
+    			        allvc  <- allnvc_x_id[ par0_sel - nsv - ng - nnxf ]
+    			      }
+    			    }
+
+    				  if( ((flag==0)&(res_ref < res$value + pen * np_add)&(allvc[1]==FALSE))|((flag==1)&(allvc[1]==FALSE))){### reject
     					  par0[ par0_id == par0_sel ] 	<- 0
     					  null_dum[ par0_sel ]		<- 1
     					  loglik 	<- ( -1 / 2 ) * c( res_ref )
     					  res_old	<- res_ref
-    				} else {
+    					  score   <- res_ref+ pen * (nx+sum(par0!=0)+1)
+    				  } else {      ####### accept
     					  par0[ par0_id == par0_sel ]	<- res$par
     					  null_dum[ par0_sel ]		<- 0
     					  res_old	<- res$value
-    					  loglik 	<- ( -1 / 2 ) * res_old
-    				}
+    					  loglik 	<- ( -1 / 2 ) * res$value
+    					  score   <- res_old + pen * (nx+sum(par0!=0)+1)
+    				  }
+    			  }
     			}
 
     			LL0	<- c( LL0, loglik )
-    			print( paste( par0_sel, "/", nsv + ng, sep = "" ) )
-
-   		}
+    			if( !is.null(x) ) print( paste( par0_sel, "/", nsv + ng + nnxf + nnsv, sep = "" ) )
+   		  }
 
     		if( iter > 1 ){
     			if( sum( n_omit ) == 0 ){
@@ -468,11 +820,11 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     			}
     		}
 
-		    Par	<- rbind( Par, par0 )
+		    Par	    <- rbind( Par, par0 )
     		loglik0	<- loglik
-    		LL	<- c( LL, loglik )
-    		print( paste( lik_nam, ": ", round( loglik, 3 ), sep = "" ) )
-    		iter	<- iter + 1
+    		LL	    <- c( LL, loglik )
+    		if( !is.null(x) ) print( paste( toupper( penalty ), ": ", round( score, 3 ), sep = "" ) )
+    		iter	  <- iter + 1
     	}
 
     	par2   	<- par0 ^ 2
@@ -480,7 +832,7 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	evSqrt2	<- list(NULL)
     	for( i in 1:nsv ){
     		evv  	<- ev ^ par2[ nsv + i ] * sum( ev ) / sum( ev ^ par2[ nsv + i ] )
-    		evSqrt	<- c( evSqrt, par2[ i ] * sqrt( evv ) )
+    		evSqrt<- c( evSqrt, par2[ i ] * sqrt( evv ) )
     		evSqrt2[[ i ]]	<- par2[ i ] * sqrt( evv )
     	}
 
@@ -492,6 +844,21 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     		}
     	}
 
+    	if( nnxf != 0 ){
+    	  for( i2 in 1:nnxf ){
+    	    xgg	<- rep( 1, sum( id == ( nsv + ng + i2 ) ) )
+    	    evSqrt	<- c( evSqrt, par2[ 2 * nsv + ng + i2 ] * xgg )
+    	    evSqrt2[[ nsv + ng + i2 ]]	<- par2[ 2 * nsv + ng + i2 ] * xgg
+    	  }
+    	}
+
+    	if( nnsv != 0 ){
+    	  for( i2 in 1:nnsv ){
+    	    xgg	<- rep( 1, sum( id == ( nsv + ng + nnxf + i2 ) ) )
+    	    evSqrt	<- c( evSqrt, par2[ 2 * nsv + ng + nnxf + i2 ] * xgg )
+    	    evSqrt2[[ nsv + ng + nnxf + i2 ]]	<- par2[ 2 * nsv + ng + nnxf + i2 ] * xgg
+    	  }
+    	}
 
     	MM	<- M [ null_dum3, null_dum3 ]
     	MM0	<- M0[ null_dum3, null_dum3 ]
@@ -516,64 +883,184 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	SSE		<- sum( resid ^ 2 )
     	SSY		<- sum( ( y - mean( y ) ) ^ 2 )
 
-    	if( is.null( ng ) == FALSE ){
-    	  nxx <- nx + ng
-    	} else {
+    	#if( is.null( ng ) == FALSE ){
+    	#  nxx <- nx + ng
+    	#} else {
     	  nxx <- nx
-    	  ng  <- 0
-    	}
+    	#  ng  <- 0
+    	#}
 
-    	sig		<- SSE / ( n - nxx )
-    	b_cov		<- sig * MMinv
-    	bse		<- sqrt( diag( b_cov ) )
+    	sig		    <- SSE / ( n - nxx )
+    	b_cov		  <- sig * MMinv
+    	bse		    <- sqrt( diag( b_cov ) )
+    	nev		    <- length( ev )
 
-    	nev		<- length( ev )
-    	b_vc		<- matrix( 0, nrow = n, ncol = nsv )
-    	bse_vc		<- matrix( 0, nrow = n, ncol = nsv )
-    	moran_vc  <- rep( 0, nsv )
-    	b_s		    <- list(NULL)
-    	b_covs		<- list(NULL)
-    	evSqrts		<- list(NULL)
-    	j0		<- 1
-    	for( j in 1:nsv ){
+    	b_vc_s0	  <- NULL
+    	b_vc_n0	  <- NULL
+    	B_vc_s	  <- NULL
+    	B_vc_n  	<- NULL
+    	if( nnsv == 0 ){
+    	  b_vc		  <- matrix( 0, nrow = n, ncol = nsv )
+    	  bse_vc		<- matrix( 0, nrow = n, ncol = nsv )
+    	  moran_vc  <- rep( 0, nsv )
+    	  bb		    <- list(NULL)
+    	  bb_cov		<- list(NULL)
+    	  evSqrts		<- list(NULL)
+    	  evSqrts_n <- list(NULL)
+    	  j0		<- 1
+    	  for( j in 1:nsv ){
         	bid0		<- ifelse( j == 1, 1, nxf + j )
     		  if( null_dum[ j ] == 0 ){
-    			bid0_vc		<- ( nx + nev * ( j0 - 1 ) + 1 ):( nx + nev * j0 )
-        	bid		<- c( bid0, bid0_vc )
-        	moran_vc[ j ] <- sum(b[ bid0_vc ]^2*ev)/(ev[1]*sum(b[ bid0_vc ]^2))
-        	b_vc[ , j ]	<- b[ bid0 ] + meig$sf %*% b[ bid0_vc ]
-    			b_cov_sub	<- b_cov[ bid, bid ]
-        	sf2		<- t( t( meig$sf ) * evSqrt2[[ j ]] )
-        	x_sf		<- as.matrix( cbind( 1, sf2 ) )
-   			  bse_vc[ , j ]	<- sqrt( colSums( t( x_sf ) * ( b_cov_sub %*% t( x_sf ) ) ) )
-    			b_s[[ j ]]	<- c(b[ bid0 ], b[ bid0_vc ] )
-    			b_covs[[ j ]]	<- b_cov_sub
-    			evSqrts[[ j ]]	<- evSqrt2[[ j ]]
-    			j0		<- j0 + 1
-    		} else {
-    			b_vc[ , j ]	<- b[ bid0 ]
-    			moran_vc[ j ] <- NA
-   			  bse_vc[ , j ]	<- sqrt( b_cov[ bid0, bid0 ] )
-    			b_s[[ j ]]	<- b[ bid0 ]
-    			b_covs[[ j ]]	<- b_cov[ bid0, bid0 ]
-    			evSqrts[[ j ]]	<- 0
-    		}
-     	}
+    			  bid0_vc		<- which( idd == j )
+        	  bid		    <- c( bid0, bid0_vc )
+        	  moran_vc[ j ] <- sum(b[ bid0_vc ]^2*ev)/(ev[1]*sum(b[ bid0_vc ]^2))
+        	  b_vc[ , j ]	<- b[ bid0 ] + meig$sf %*% b[ bid0_vc ]
+    			  b_cov_sub	<- b_cov[ bid, bid ]
+        	  sf2		<- t( t( meig$sf ) * evSqrt2[[ j ]] )
+        	  x_sf		<- as.matrix( cbind( 1, sf2 ) )
+   			    bse_vc[ , j ]	<- sqrt( colSums( t( x_sf ) * ( b_cov_sub %*% t( x_sf ) ) ) )
+    			  bb[[ j ]]	<- c(b[ bid0 ], b[ bid0_vc ] )
+    			  bb_cov[[ j ]]	<- b_cov_sub
+    			  evSqrts[[ j ]]	<- evSqrt2[[ j ]]
+    			  j0		<- j0 + 1
+    		  } else {
+    			  b_vc[ , j ]	  <- b[ bid0 ]
+    			  moran_vc[ j ] <- NA
+   			    bse_vc[ , j ]	<- sqrt( b_cov[ bid0, bid0 ] )
+    			  bb[[ j ]]	    <- b[ bid0 ]
+    			  bb_cov[[ j ]]	<- b_cov[ bid0, bid0 ]
+    			  evSqrts[[ j ]]	<- 0
+    		  }
+     	  }
+      } else {
+        b_vc_s0		<- matrix( 0, nrow = n, ncol = nsv )
+        b_vc_n0	  <- matrix( 0, nrow = n, ncol = nsv )
+        bse_vc_s0	<- matrix( 0, nrow = n, ncol = nsv )
+        bse_vc_n0	<- matrix( 0, nrow = n, ncol = nsv )
+        b_vc		  <- matrix( 0, nrow = n, ncol = nsv )
+        bse_vc		<- matrix( 0, nrow = n, ncol = nsv )
+        moran_vc  <- rep( 0, nsv )
+        bb		    <- list(NULL)
+        bb_cov		<- list(NULL)
+        evSqrts	  <- list(NULL)
+        evSqrts_n <- list(NULL)
+        j_nvc     <- 1
+        for( j in 1:nsv ){
+          bid0		<- ifelse( j == 1, 1, nxf + j )
+          bse_vc_n0[ , j ]<- sqrt( b_cov[ bid0, bid0 ] )## added
+          if( null_dum[ j ] == 0 ){
+            bid0_vc		    <- which( idd == j )
+            b_vc_s0[ , j ]<- meig$sf %*% b[ bid0_vc ]
+            moran_vc[ j ] <- sum(b[ bid0_vc ]^2*ev)/(ev[1]*sum(b[ bid0_vc ]^2))
+
+            x_sf_s        <- t( t( meig$sf ) * evSqrt2[[ j ]] )
+            x_sf_ss       <- as.matrix( cbind( 1, x_sf_s ))              #### added
+            b_cov_sub_s0  <- b_cov[ c(bid0, bid0_vc), c(bid0, bid0_vc) ] #### changed
+            bse_vc_s0[ , j ]<- sqrt( colSums( t( x_sf_ss ) * ( b_cov_sub_s0 %*% t( x_sf_ss ) ) ) )
+
+          } else {
+            bid0_vc       <- NULL
+            bse_vc_s0[ , j ]<- sqrt( b_cov[ bid0, bid0 ] )
+            x_sf_s        <- NULL
+            moran_vc[ j ] <- NA
+          }
+
+          if((( 1:nsv ) %in% ( nvc_x + 1 ))[ j ] ){
+            #if( ( null_dum[ nsv + ng + nnxf + j_nvc ] == 0 )&(sum(idd == nsv + ng + nnxf + j_nvc) > 0) ){#fixed
+            if( ( null_dum[ nsv + ng + nnxf + j - 1 ] == 0 )&(sum(idd == nsv + ng + nnxf + j - 1) > 0) ){ # changed
+              bid0_nvc      <- which(idd == nsv + ng + nnxf + j - 1 ) # changed
+              b_vc_n0[ , j ]<- XX1_0[[ j - 1 ]] %*% b[ bid0_nvc ]
+
+              x_sf_n        <- t( t( XX1_0[[ j - 1 ]] ) * evSqrt2[[ nsv + ng + nnxf + j - 1 ]] )
+              x_sf_nn       <- as.matrix( cbind( 1, x_sf_n ))                 #### added
+              b_cov_sub_n0  <- b_cov[ c(bid0, bid0_nvc), c(bid0, bid0_nvc) ] #### changed
+              bse_vc_n0[ , j ]<- sqrt( colSums( t( x_sf_nn ) * ( b_cov_sub_n0 %*% t( x_sf_nn ) ) ) )
+              #j_nvc         <- j_nvc + 1
+              j_nvc_id      <-1
+
+            } else {
+              bid0_nvc <- NULL
+              bse_vc_n0[ , j ]<- sqrt( b_cov[ bid0, bid0 ] )
+              x_sf_n   <- NULL
+              j_nvc_id <-0
+            }
+            #j_nvc_id   <-0
+          } else {
+            bid0_nvc   <- NULL
+            x_sf_n     <- NULL
+            j_nvc_id <-0
+          }
+
+          if( (null_dum[ j ] == 0)|(null_dum[ nsv + ng +nnxf + j - 1 ] == 0 )){#minus 1 because line 804
+            b_vc[ , j ]   <- b[ bid0 ] + b_vc_s0[ , j ] + b_vc_n0[ , j ]
+            bid		        <- c( bid0, bid0_vc, bid0_nvc )
+            b_cov_sub	    <- b_cov[ bid, bid ]
+            x_sf		      <- as.matrix( cbind( 1,x_sf_s, x_sf_n))
+            bse_vc[ , j ]	<- sqrt( colSums( t( x_sf ) * ( b_cov_sub %*% t( x_sf ) ) ) )
+            bb[[ j ]]	    <- b[ bid ]
+            bb_cov[[ j ]]	<- b_cov_sub
+            evSqrts[[ j ]]<- evSqrt2[[ j ]]
+            if( j_nvc_id == 1 ){
+              evSqrts_n[[ j ]]<- evSqrt2[[ nsv + ng + nnxf + j - 1 ]]
+            } else {
+              evSqrts_n[[ j ]]<- 0
+            }
+            if( null_dum[ j ] == 1 ) evSqrts[[ j ]]<- 0
+
+            b_vc_s0[ , j ]<-b[ bid0 ] +b_vc_s0[ , j ]   #### added
+            b_vc_n0[ , j ]<-b[ bid0 ] +b_vc_n0[ , j ]   #### added
+          } else {
+            b_vc[ , j ]	  <- b_vc_s0[ , j ]  <- b_vc_n0[ , j ]  <- b[ bid0 ] ##### added
+            bse_vc[ , j ]	<- bse_vc_s0[ , j ]<- bse_vc_n0[ , j ]<- sqrt( b_cov[ bid0, bid0 ] ) #### added
+            bb[[ j ]]	  <- b[ bid0 ]
+            bb_cov[[ j ]]	<- b_cov[ bid0, bid0 ]
+            evSqrts  [[ j ]]	<- 0
+            evSqrts_n[[ j ]]	<- 0
+          }
+        }
+      }
+
+    	if( nnxf != 0 ){
+    	  bf_vc		  <- matrix( 0, nrow = n, ncol = nxf )
+    	  bfse_vc		<- matrix( 0, nrow = n, ncol = nxf )
+    	  bf_s		  <- list(NULL)
+    	  bf_covs		<- list(NULL)
+    	  evSqrts_c	<- list(NULL)
+    	  for( j in which( (1:nxf) %in% nvc_xconst ) ){ # check!
+    	    #bid0		        <- 1 + j
+    	    if( (null_dum[ nsv + ng + j ] == 0)&( sum(idd == nsv + ng + j)>0 ) ){
+            bid0_nvc      <- which( idd == nsv + ng + j )
+    	      bf_vc[ , j ]  <- b[ 1 + j ] + XXconst_0[[ j ]] %*% b[ bid0_nvc ]#bid0
+    	      x_sf_n        <- t( t( XXconst_0[[ j ]] ) * evSqrt2[[ nsv + ng + j ]] )
+    	      bid           <-c(1 + j, bid0_nvc)
+    	      b_cov_sub	    <- b_cov[ bid, bid ]
+    	      x_sf		      <- as.matrix( cbind( 1,x_sf_n ))
+    	      bfse_vc[ , j ]<- sqrt( colSums( t( x_sf ) * ( b_cov_sub %*% t( x_sf ) ) ) )
+
+    	    } else {
+    	      bid            <- 1 + j#bid0
+    	      bf_vc  [ , j ] <- b[ bid ]
+    	      b_cov_sub      <- sqrt( b_cov[ bid, bid ])
+    	      bfse_vc[ , j ] <- b_cov_sub
+    	      bid0_nvc       <- NULL
+    	      x_sf_n         <- NULL
+    	    }
+
+    	    bf_s[[ j ]]	    <- b[ bid ]
+    	    bf_covs[[ j ]]	<- b_cov_sub
+    	    evSqrts_c[[ j ]]<- evSqrt2[[ nsv + ng  + j ]]
+    	    if( null_dum[ nsv + ng + j ] == 1 ) evSqrts_c[[ j ]]<- 0  #added
+    	  }
+     } else {
+    	    bf_vc		  <- NULL
+    	    bfse_vc		<- NULL
+    	    bf_s		  <- NULL
+    	    bf_covs		<- NULL
+    	    evSqrts_c	<- NULL
+     }
 
     	parV		<- par2[   1:nsv  ]
     	parR		<- par2[ (nsv + 1):( 2 * nsv ) ]
-    	if( ng != 0 ){
-    		parG	<- par2[ (2 * nsv + 1 ):( 2 * nsv + ng ) ]
-    	}
-    	nsv2		<- sum( parV != 0 )
-
-    	Xm		  <- X[ , null_dum3 ]
-    	Xm[ , -( 1:nx ) ] <- t( t( Xm[ , -( 1:nx ) ] ) * eevSqrt )
-    	np		<- nxx + nsv2 * 2 + ng + 1
-    	AIC		<- -2 * loglik + np * 2
-    	BIC		<- -2 * loglik + np * log( n )
-    	r2_0		<- 1 - SSE / SSY
-    	r2		<- 1 - ( 1- r2_0 ) * ( n - 1 ) / ( n - np - 1 )
 
     	Bias  <-0
     	if( ng != 0 ){
@@ -610,54 +1097,262 @@ resf_vc		<- function( y, x = NULL, xgroup = NULL, xconst = NULL, meig, method = 
     	  bpar_g2  <- NULL
     	}
 
-      if( nxf != 0 ) {
-    		  b		  <- b  [ 2:( nxf + 1 ) ]
-    		  bse		<- bse[ 2:( nxf + 1 ) ]
-    		  bt		<- b / bse
-    		  df		<- sum( t( Xm ) * ( MMinv %*% t( Xm ) ) )
-        	bp		<- 2 - 2 * pt( abs( bt ), df = n - df )
-    		  b_par		<- data.frame( Estimate = b, SE = bse, t_value = bt, p_value = bp )
-        	rownames( b_par )<- xfname
-      } else {
-    		  df		<- sum( t( Xm ) * ( MMinv %*% t( Xm ) ) )
-        	b_par		<- NULL
-      }
 
-    	b_vc[,1]<-b_vc[,1] + Bias
-      bt_vc		<- as.matrix( b_vc / bse_vc )
-      bp_vc		<- 2 - 2 * pt( abs( bt_vc ), df = n - df )
-      b_vc		<- data.frame( b_vc )
-      bse_vc		<- data.frame( bse_vc )
-      bt_vc		<- data.frame( bt_vc )
-      bp_vc		<- data.frame( bp_vc )
-      names( b_vc )	<- c( "(Intercept)", xname )
-      names( bse_vc )	<- c( "(Intercept)", xname )
-      names( bt_vc )	<- c( "(Intercept)", xname )
-      names( bp_vc )	<- c( "(Intercept)", xname )
+    	if( ng != 0 ){
+    	  parG	<- par2[ (2 * nsv + 1 ):( 2 * nsv + ng ) ]
+    	} else {
+    	  parG  <- NULL
+    	}
+    	if(nnxf != 0 ){
+    	  parNxf<- par2[ (2 * nsv +ng + 1 ):( 2 * nsv + ng + nnxf) ]
+    	} else {
+    	  parNxf<- NULL
+    	}
+    	if(nnsv != 0 ){
+    	  parNsv<- par2[ (2 * nsv + ng + nnxf + 1 ):( 2 * nsv + ng + nnxf + nnsv ) ]
+    	} else {
+    	  parNsv<- NULL
+    	}
+
+    	nsv2		<- sum( parV != 0 )
+    	nnxf2   <- sum( parNxf != 0 )
+    	nnsv2   <- sum( parNsv != 0 )
+    	Xm		  <- X[ , null_dum3 ]
+    	Xm[ , -( 1:nx ) ] <- t( t( Xm[ , -( 1:nx ) ] ) * eevSqrt )
+    	np		  <- nxx + nsv2 * 2 + ng + nnxf2 + nnsv2 + 1
+    	AIC		  <- -2 * loglik + np * 2
+    	BIC		  <- -2 * loglik + np * log( n )
+    	r2_0		<- 1 - SSE / SSY
+    	r2		  <- 1 - ( 1- r2_0 ) * ( n - 1 ) / ( n - np - 1 )
+
+    	if( is.null( x ) ){
+      	b_vc[,1]<- b_vc[,1] + Bias
+    	  #mean_bvc<- mean( b_vc[,1] )
+    	  #b_vc[,1]<- b_vc[,1] - mean_bvc
+
+      	b_c		  <- b[ 1:( nxf + 1 ) ]
+      	b_c[1]  <- b_c[1] + Bias# + mean_bvc
+      	r       <- b[( nx + 1 ):( nx + nev) ]
+
+      	bse_c	  <- bse[ 1:( nxf + 1 ) ]
+      	bt_c	  <- b_c / bse_c
+      	df	    <- sum( t( Xm ) * ( MMinv %*% t( Xm ) ) )
+      	bp_c	  <- 2 - 2 * pt( abs( bt_c ), df = n - df )
+      	b_par		<- data.frame( Estimate = b_c, SE = bse_c, t_value = bt_c, p_value = bp_c )
+      	rownames( b_par )<- c("(Intercept)", xfname)
+
+    	} else {
+    	  if( nxf != 0 ) {
+    	    b_c		<- b  [ 2:( nxf + 1 ) ]
+    	    bse_c	<- bse[ 2:( nxf + 1 ) ]
+    	    bt_c	<- b_c / bse_c
+    	    df	  <- sum( t( Xm ) * ( MMinv %*% t( Xm ) ) )
+    	    bp_c	<- 2 - 2 * pt( abs( bt_c ), df = n - df )
+    	    b_par	<- data.frame( Estimate = b_c, SE = bse_c, t_value = bt_c, p_value = bp_c )
+    	    rownames( b_par )<- xfname
+    	  } else {
+    	    df		<- sum( t( Xm ) * ( MMinv %*% t( Xm ) ) )
+    	    b_par	<- NULL
+    	  }
+
+    	  b_vc[,1]<- b_vc[,1] + Bias
+    	  r       <- NULL ############### caution
+    	}
+
+    	bt_vc		<- as.matrix( b_vc / bse_vc )
+    	bp_vc		<- 2 - 2 * pt( abs( bt_vc ), df = n - df )
+    	b_vc		<- data.frame( b_vc )
+    	bse_vc		<- data.frame( bse_vc )
+    	bt_vc		<- data.frame( bt_vc )
+    	bp_vc		<- data.frame( bp_vc )
+    	names( b_vc )	  <- c( "(Intercept)", xname )
+    	names( bse_vc )	<- c( "(Intercept)", xname )
+    	names( bt_vc )	<- c( "(Intercept)", xname )
+    	names( bp_vc )	<- c( "(Intercept)", xname )
+
+    	if(is.null(b_vc_s0) ==FALSE ){
+    	  bt_vc_s0		    <- as.matrix( b_vc_s0 / bse_vc_s0 )
+    	  bp_vc_s0        <- 2 - 2 * pt( abs( bt_vc_s0 ), df = n - df )
+
+    	  b_vc_s0		      <- data.frame( b_vc_s0 )
+    	  bse_vc_s0       <- data.frame( bse_vc_s0 )
+    	  bt_vc_s0		    <- data.frame( bt_vc_s0 )
+    	  bp_vc_s0		    <- data.frame( bp_vc_s0 )
+    	  names( b_vc_s0 )	<- c( "(Intercept)", xname )
+    	  names( bse_vc_s0 )<- c( "(Intercept)", xname )
+    	  names( bt_vc_s0 )	<- c( "(Intercept)", xname )
+    	  names( bp_vc_s0 )	<- c( "(Intercept)", xname )
+
+    	  B_vc_s <-list(b_vc_s0, bse_vc_s0, bt_vc_s0, bp_vc_s0)
+    	}
+    	if(is.null(b_vc_n0) ==FALSE ){
+    	  bt_vc_n0		    <- as.matrix( b_vc_n0 / bse_vc_n0 )
+    	  bp_vc_n0        <- 2 - 2 * pt( abs( bt_vc_n0 ), df = n - df )
+
+    	  b_vc_n0		      <- data.frame( b_vc_n0 )
+    	  bse_vc_n0       <- data.frame( bse_vc_n0 )
+    	  bt_vc_n0		    <- data.frame( bt_vc_n0 )
+    	  bp_vc_n0		    <- data.frame( bp_vc_n0 )
+    	  names( b_vc_n0 )	<- c( "(Intercept)", xname )
+    	  names( bse_vc_n0 )<- c( "(Intercept)", xname )
+    	  names( bt_vc_n0 )	<- c( "(Intercept)", xname )
+    	  names( bp_vc_n0 )	<- c( "(Intercept)", xname )
+
+    	  B_vc_n <-list(b_vc_n0, bse_vc_n0, bt_vc_n0, bp_vc_n0)
+    	}
+
+    	if( nnxf != 0 ) {
+    	  bft_vc		<- as.matrix( bf_vc / bfse_vc )
+    	  bfp_vc		<- 2 - 2 * pt( abs( bft_vc ), df = n - df )
+    	  bf_vc		<- data.frame( bf_vc )
+    	  bfse_vc		<- data.frame( bfse_vc )
+    	  bft_vc		<- data.frame( bft_vc )
+    	  bfp_vc		<- data.frame( bfp_vc )
+    	  names( bf_vc )	  <- xxfname
+    	  names( bfse_vc )	<- xxfname
+    	  names( bft_vc )	<- xxfname
+    	  names( bfp_vc )	<- xxfname
+    	} else {
+    	  bf_vc    <- NULL
+    	  bfse_vc  <- NULL
+    	  bft_vc   <- NULL
+    	  bfp_vc   <- NULL
+    	}
+
       parV		<- parV * sqrt( sig )
     	sf_par		<- data.frame( rbind( parV, moran_vc ) )
     	names( sf_par )	<- c( "(Intercept)", xname )
-    	rownames( sf_par )<- c( "spcomp_SE", "spcomp_Moran.I/max(Moran.I)" )
+    	rownames( sf_par )<- c( "random_SE", "Moran.I/max(Moran.I)" )
 
+    	s_g       <- NULL
     	if( ng != 0 ){
     	  parG		<- t( parG * sqrt( sig ) )
-    	  bg_par		<- data.frame( parG )
-    	  rownames( bg_par )	<- "random_SE"
+    	  bg_par	<- data.frame( parG )
+    	  rownames( bg_par )	<- "ramdom_SE"
     	  names( bg_par )	<- names( as.data.frame(xgroup) )
-    	} else {
-    	  bg_par  <-NULL
+    	  s_g     <- bg_par
     	}
 
     	e_stat		<- data.frame( stat = c( sqrt( sig ), r2, loglik, AIC, BIC ) )
     	rownames( e_stat ) <- c( "resid_SE", "adjR2(cond)", lik_nam, "AIC", "BIC")
     	vc		<- data.frame(ifelse( sf_par[1,] ==0, 0, 1) )
     	names( vc )	<- names( sf_par )
-    	rownames( vc )	<- "varying coefficients"
-    	r		<- NULL
-    	other		<- list( sf_alpha = parR, x_id = x_id, nxf = nxf, xf_id = xf_id, df = df, b_s = b_s, b_covs = b_covs, evSqrts = evSqrts, model = "resf_vc" )
-    }
+    	rownames( vc )	<- "Spatial"
 
-    return( list( b = b_par, b_g = bpar_g2, s = sf_par, s_g = bg_par,
-                  e = e_stat, b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc,
-    		          pred = pred, resid = resid, vc = vc, r = r, other = other ) )
+    	if( is.null( parNsv ) ==FALSE ){
+    	  vc  <- rbind( vc, c(0, ifelse( parNsv ==0, 0, 1 )))
+    	  rownames( vc )[2]	<- "Non-spatial"
+
+    	  parN		<- t( parNsv * sqrt( sig ) )
+    	  bn_par	<- data.frame( parN )
+    	  rownames( bn_par )	<- "random_SE"
+    	  names( bn_par )	<- xxname
+    	  s_n    <- bn_par
+
+    	  totv   <-as.vector(sf_par[1,]+c(0,s_n))
+    	  s_rat  <-as.vector(sf_par[1,])/totv
+    	  n_rat  <-as.vector(c(0,s_n))/totv
+    	  s_rat[totv==0]<-NA;n_rat[totv==0]<-NA
+    	  sn_rat <-data.frame(rbind(s_rat,n_rat))
+    	  rownames(sn_rat)<-c("Share (Spatial)","Share (Non-spatial)")
+    	  names(sn_rat)[1]<-"(Intercept)"
+    	  s       <- list(sf_par, s_n, sn_rat)
+    	} else {
+    	  s       <- sf_par
+    	}
+
+    	s_nxconst<- NULL
+    	if( is.null( parNxf ) ==FALSE ){
+    	  vc_n      <- as.data.frame( t(ifelse( parNxf ==0, 0, 1 )))
+    	  names( vc_n )	  <- xxfname
+    	  rownames( vc_n )<- "Non-spatial"
+    	  vc        <- list( vc, vc_n )
+    	  parNf		  <- t( parNxf * sqrt( sig ) )
+    	  bnf_par		<- data.frame( parNf )
+    	  rownames( bnf_par )	<- "random_SE"
+    	  names( bnf_par )	  <- xxfname
+    	  s_nxconst<- bnf_par
+    	}
+
+    	if( sum( n_omit ) >5 ) {
+    	  if( e_stat[2,1]> -0.2 ){
+    	    message( "Note: The model is nearly singular. Consider simplifying the model (dummy variable in x is a typical cause)" )
+    	  } else {
+    	    message( "Note: Singular fit. Simplify the model (dummy variable in x is a typical cause)")
+    	  }
+    	} else if( e_stat[2,1]< -0.2 ){
+    	  message("Note: Singular fit. Simplify the model (dummy variable in x is a typical cause)")
+    	}
+
+    	other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nxf = nxf, xf_id = xf_id, df = df, b_s = bb, b_covs = bb_cov,
+    	                evSqrts = evSqrts, evSqrts_n = evSqrts_n, evSqrts_c = evSqrts_c, model = "resf_vc", b_c = bf_s, b_covs_c = bf_covs,
+    	                Bias=Bias, nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num, sel_basis_c = sel_basis_c, sel_basis_n = sel_basis_n,
+    	                x = x, xconst = xconst, coords = meig$other$coords )
+
+    result    <- list( b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc, B_vc_s = B_vc_s, B_vc_n = B_vc_n,
+                       c = b_par, c_vc = bf_vc, cse_vc = bfse_vc, ct_vc = bft_vc, cp_vc = bfp_vc, b_g = bpar_g2,
+                       s = s, s_c=s_nxconst, s_g = s_g, vc = vc, e = e_stat, pred = pred, resid = resid, other = other, call = match.call() )
+    class( result) <- "resf_vc"
+    return( result )
 }
+
+print.resf_vc <- function(x, ...)
+{
+  cat("Call:\n")
+  print(x$call)
+  if( is( x$s )[1] == "list" ){
+    cat("\n----Spatially and non-spatially varying coefficients on x (summary)----\n")
+  } else {
+    cat("\n----Spatially varying coefficients on x (summary)----\n")
+  }
+  cat("\nCoefficient estimates:\n")
+  print( summary( x$b_vc ) )
+  cat("\nStatistical significance:\n")
+  p01<-apply(x$p_vc,2,function(x) sum(x<0.01))
+  p05<-apply(x$p_vc,2,function(x) sum(x<0.05)) - p01
+  p10<-apply(x$p_vc,2,function(x) sum(x<0.10)) - p01 - p05
+  p90<-length(x$p_vc[,1]) - p01 - p05 - p10
+  pv <-data.frame(rbind( p90, p10, p05, p01))
+  names(pv)[1]  <- "Intercept"
+  row.names(pv) <- c("Not significant", "Significant (10% level)",
+                     "Significant ( 5% level)","Significant ( 1% level)")
+  print(pv)
+  if( is.null(x$s_c) & !is.null(x$c) ){
+    cat("\n----Constant coefficients on xconst----------------------------\n")
+    print( x$c )
+
+  } else if( !is.null(x$c_vc) ){
+    cat("\n----Non-spatially varying coefficients on xconst (summary)----\n")
+    cat("\nCoefficient estimates:\n")
+    print( summary( x$c_vc ) )
+    cat("\nStatistical significance:\n")
+    cp01<-apply(x$cp_vc,2,function(x) sum(x<0.01))
+    cp05<-apply(x$cp_vc,2,function(x) sum(x<0.05)) - cp01
+    cp10<-apply(x$cp_vc,2,function(x) sum(x<0.10)) - cp01 - cp05
+    cp90<-length(x$cp_vc[,1]) - cp01 - cp05 - cp10
+    cpv <-data.frame(rbind( cp90, cp10, cp05, cp01))
+    row.names(cpv) <- c("Not significant", "Significant (10% level)",
+                        "Significant ( 5% level)","Significant ( 1% level)")
+    print(cpv)
+  }
+  cat("\n----Variance parameters----------------------------------\n")
+  cat("\nSpatial variation (coefficients on x):\n")
+  if( is( x$s )[1] != "list" ){
+    print( x$s )
+  } else {
+    print(x$s[[1]])
+    cat("\nNon-spatial variation (coefficients on x):\n")
+    print(x$s[[2]])
+  }
+  if( !is.null(x$s_c) ){
+    cat("\nNon-spatial variation (coefficients on xconst):\n")
+    print(x$s_c)
+  }
+  if( !is.null(x$s_g) ){
+    cat("\nGroup variation:\n")
+    print(x$s_g)
+  }
+  cat("\n----Error statistics-------------------------------------\n")
+  print(x$e)
+}
+

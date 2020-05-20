@@ -1,25 +1,36 @@
 \name{resf}
 \alias{resf}
-\title{Spatial regression with random effects eigenvector spatial filtering}
+\title{Spatial regression with random effects eigenvector spatial filtering (RE-ESF)}
 \usage{
-resf( y, x = NULL, xgroup = NULL, meig, method = "reml" )
+resf( y, x = NULL, xgroup = NULL, nvc = FALSE, nvc_sel = TRUE,
+      nvc_num = 5, meig, method = "reml", penalty = "bic" )
 }
 \description{
-This function estimates the random effects eigenvector spatial filtering (RE-ESF) model.
+RE-ESF-based spatial regression modeling. This model estimates residual spatial dependence, constant coefficients, non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), and group effects.
 }
 \arguments{
 \item{y}{Vector of explained variables (N x 1)}
 \item{x}{Matrix of explanatory variables (N x K). Default is NULL}
-\item{xgroup}{Matrix of group indexes. The indeces may be group IDs (numbers) or group names (N x K_{group}). Default is NULL}
-\item{meig}{Moran's eigenvectors and eigenvalues. Output from \code{\link{meigen}} or \code{\link{meigen_f}}}
+\item{xgroup}{Matrix of group IDs. The IDs may be group numbers or group names (N x K_{group}). Default is NULL}
+\item{nvc}{If TRUE, non-spatiallly varying coefficients (NVCs; coefficients varying with respect to explanatory variable value) are asumed. If FALSE, constant coefficients are assumed. Default is FALSE}
+\item{nvc_sel}{If TRUE, type of each coefficient (NVC or constant) is selected through a BIC (default) or AIC minimization. If FALSE, NVCs are assumed across x. Alternatively, nvc_sel can be given by column number(s) of x. For example, if nvc_sel = 2, the coefficient on the second explanatory variable is NVC and the other coefficients are constants. Default is TRUE}
+\item{nvc_num}{Number of basis functions used to model NVC. An intercept and nvc_num natural spline basis functions are used to model each NVC. Default is 5}
+\item{meig}{Moran eigenvectors and eigenvalues. Output from \code{\link{meigen}} or \code{\link{meigen_f}}}
 \item{method}{Estimation method. Restricted maximum likelihood method ("reml") and maximum likelihood method ("ml") are available. Default is "reml"}
+\item{penalty}{Penalty to select type of coefficients (NVC or constant) to stablize the estimates. The current options are "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion (2K). Default is "bic"}
 }
 \value{
 \item{b}{Matrix with columns for the estimated coefficients on x, their standard errors, t-values, and p-values (K x 4)}
 \item{b_g}{List of K_{group} matrices with columns for the estimated group effects, their standard errors, and t-values}
-\item{s}{Vector of estimated variance parameters (2 x 1). The first and the second elements denote the standard error and the Moran's I value of the estimated spatially dependent component, respectively. The Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (the maximum possible spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked}
+\item{c_vc}{Matrix of estimated NVCs on x (N x K). Effective if nvc = TRUE}
+\item{cse_vc}{Matrix of standard errors for the NVCs on x (N x K). Effective if nvc = TRUE}
+\item{ct_vc}{Matrix of t-values for the NVCs on x (N x K). Effective if nvc = TRUE}
+\item{cp_vc}{Matrix of p-values for the NVCs on x (N x K). Effective if nvc = TRUE}
+\item{s}{Vector of estimated variance parameters (2 x 1). The first and the second elements are the standard error and the Moran's I value of the estimated spatially dependent process, respectively. The Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (the maximum possible spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked}
+\item{s_c}{Vector of standard errors of the NVCs on xconst}
 \item{s_g}{Vector of estimated standard errors of the group effects}
 \item{e}{Vector whose elements are residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). When method = "ml", restricted log-likelihood (rlogLik) is replaced with log-likelihood (logLik)}
+\item{vc}{List indicating whether NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed whreas 0 indicates removed}
 \item{r}{Vector of estimated random coefficients on Moran's eigenvectors (L x 1)}
 \item{sf}{Vector of estimated spatial dependent component (N x 1)}
 \item{pred}{Vector of predicted values (N x 1)}
@@ -35,26 +46,37 @@ Griffith, D. A. (2003). Spatial autocorrelation and spatial filtering: gaining u
 Daisuke Murakami
 }
 \seealso{
-\code{\link{besf}}, \code{\link{meigen}}, \code{\link{meigen_f}}
+\code{\link{meigen}}, \code{\link{meigen_f}}, \code{\link{besf}}
 }
 \examples{
 require(spdep);require(Matrix)
 data(boston)
-y	<- boston.c[, "CMEDV" ]
-x	<- boston.c[,c("CRIM","ZN","INDUS", "CHAS", "NOX","RM", "AGE",
-                       "DIS" ,"RAD", "TAX", "PTRATIO", "B", "LSTAT")]
+y	    <- boston.c[, "CMEDV" ]
+x	    <- boston.c[,c("CRIM","ZN","INDUS", "CHAS", "NOX","RM", "AGE",
+                     "DIS" ,"RAD", "TAX", "PTRATIO", "B", "LSTAT")]
 xgroup<- boston.c[,"TOWN"]
 coords<- boston.c[,c("LAT","LON")]
 meig 	<- meigen(coords=coords)
-res	  <- resf(y = y, x = x, xgroup = xgroup, meig = meig)
-res$b
-res$b_g
-res$s
-res$s_g
-res$e
+# meig<- meigen_f(coords=coords)  ## for large samples
 
-#########Fast approximation
-meig_f <- meigen_f(coords=coords)
-res2   <- resf(y=y,x=x, xgroup = xgroup,meig=meig_f)
+######## Regression considering residual spatially dependence
+res	  <- resf(y = y, x = x, meig = meig)
+res
+
+######## Regression considering residual spatially dependence and NVC
+######## (coefficients or NVC is selected)
+#res2 <- resf(y = y, x = x, meig = meig, nvc = TRUE)
+
+######## Regression considering residual spatially dependence and NVC
+######## (all the coefficients are NVCs)
+#res3 <- resf(y = y, x = x, meig = meig, nvc = TRUE, nvc_sel=FALSE)
+
+######## Regression considering residual spatially dependence and group effects
+#res4 <- resf(y = y, x = x, meig = meig, xgroup = xgroup)
+
+######## Regression considering group-level spatially dependence and group effects
+#meig_g<- meigen(coords=coords, s_id = xgroup)
+#res5 <- resf(y = y, x = x, meig = meig_g, xgroup = xgroup)
+
 }
 

@@ -12,12 +12,12 @@ This function estimates the low rank spatial lag model.
 \item{x}{Matrix of explanatory variables (N x K)}
 \item{weig}{eigenvectors and eigenvalues of a spatial weight matrix. Output from \code{\link{weigen}}}
 \item{method}{Estimation method. Restricted maximum likelihood method ("reml") and maximum likelihood method ("ml") are available. Default is "reml"}
-\item{boot}{If it is TRUE, confidence intervals for the spatial dependence parameters (s), the mean direct effects (de), and the mean indirect effects (ie), are estimated by a parametric bootstrapping. Default is FALSE}
-\item{iter}{The number of bootstrap replications. Default is 200}
+\item{boot}{If it is TRUE, confidence intervals for the spatial dependence parameters (s), the mean direct effects (de), and the mean indirect effects (ie), are estimated through a parametric bootstrapping. Default is FALSE}
+\item{iter}{The number of bootstrap replicates. Default is 200}
 }
 \value{
 \item{b}{Matrix with columns for the estimated coefficients on x, their standard errors, t-values, and p-values (K x 4)}
-\item{s}{Vector of estimated shrinkage parameters (2 x 1). The first and the second elements denote the estimated rho parameter (sp_rho), quantfying the scale of spatial dependence, and the standard error of the spatial dependent component (sp_SE), respectively. If boot = TRUE, their 95 percent confidence intervals and the resulting p-values are also provided}
+\item{s}{Vector of estimated shrinkage parameters (2 x 1). The first and the second elements denote the estimated rho parameter (sp_rho) quantfying the scale of spatial dependence, and the standard error of the spatial dependent component (sp_SE), respectively. If boot = TRUE, their 95 percent confidence intervals and the resulting p-values are also provided}
 \item{e}{Vector whose elements are residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). When method = "ml", restricted log-likelihood (rlogLik) is replaced with log-likelihood (logLik)}
 \item{de}{Matrix with columns for the estimated mean direct effects on x. If boot = TRUE, their 95 percent confidence intervals and the resulting p-values are also provided}
 \item{ie}{Matrix with columns for the estimated mean indirect effects on x. If boot = TRUE, their 95 percent confidence intervals and the resulting p-values are also provided}
@@ -44,11 +44,7 @@ coords  <- boston.c[,c("LAT","LON")]
 weig 	  <- weigen(coords)
 res	    <- lslm(y=y,x=x,weig=weig)
 ## res  <- lslm(y=y,x=x,weig=weig, boot=TRUE)
-res$b
-res$s
-res$de
-res$ie
-res$e
+res
 
 }
 
