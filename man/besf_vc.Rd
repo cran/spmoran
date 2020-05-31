@@ -90,7 +90,7 @@ y	      <- boston.c[, "CMEDV"]
 x       <- boston.c[,c("CRIM", "AGE")]
 xconst  <- boston.c[,c("ZN","DIS","RAD","NOX",  "TAX","RM", "PTRATIO", "B")]
 xgroup  <- boston.c[,"TOWN"]
-coords  <- boston.c[,c("LAT","LON")]
+coords  <- boston.c[,c("LON", "LAT")]
 
 ############## SVC modeling1 #################
 ######## (SVC on x; Constant coefficients on xconst)

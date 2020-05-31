@@ -223,8 +223,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
                   r = rpar, sf = SF, pred = pred, resid = resid, other = other ) )
   }
 
-
-    resf_boot  	<-function( tau_sel, q_sel, y, X, M, meig, mod, iter ){
+  resf_boot  	<-function( tau_sel, q_sel, y, X, M, meig, mod, iter ){
 
       re_esfb	<-function( y, X, XSF0, M, meig ){
 
@@ -247,7 +246,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
             b	<- Minv %*% m
             sse	<- yy - 2 * t( b ) %*% m + t( b ) %*% M0 %*% b
             dd	<- sse + sum( b[ -( 1:nx ) ] ^ 2 )
-            if( ( emet == "reml" ) | ( emet == "pls" ) ){
+            if( emet == "reml" ){
               term1	<- determinant( M )$modulus
               term2	<- ( n - nx ) * ( 1 + log( 2 * pi * dd / ( n - nx ) ) )
             } else if( emet == "ml" ){
@@ -266,7 +265,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
         yy	<- sum( y^2 )
         m	<- c( crossprod( X, y ), crossprod( meig$sf, y ) )
         res 	<- optim( fn = lik_resf, c( 1, 1 ), ev = ev, M = M, m = m,
-                       yy = yy, n = n, nx = nx, ne = ne, emet = "pls" )
+                       yy = yy, n = n, nx = nx, ne = ne, emet = "reml" )
         par	<- res$par ^ 2
         loglik 	<- ( -1 / 2 ) * res$value
         evv     <- ev ^ par[ 1 ] * ( sum( ev ) / sum( ev ^ par[ 1 ] ) )
@@ -285,26 +284,26 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
         return(list( b = b[ 1:nx ], par = par, sf_moran = sf_moran ) )
       }
 
-      b	<- mod$b[  , 1 ]
-    	s	<- c( mod$s[ 1, ], mod$other$sf_alpha )
+      b	  <- mod$b[  , 1 ]
+    	s	  <- c( mod$s[ 1, ], mod$other$sf_alpha )
     	sd	<- mod$e[ 1, 1 ]
     	ev	<- meig$ev
-    	n	<- length( y )
+    	n	  <- length( y )
     	ne	<- length( ev )
     	nx	<- dim( X )[ 2 ]
 
     	evv	<- ev ^ s[ 2 ] * ( sum( ev ) / sum( ev ^ s[ 2 ] ) )
     	evSqrt	<- s[ 1 ] * sqrt( evv )
-    	sf2	<- t( t( meig$sf ) * evSqrt )
+    	sf2	  <- t( t( meig$sf ) * evSqrt )
     	XSF0	<- as.matrix( cbind( X, meig$sf ) )
-    	f0	<- density( y )
-    	fq0	<- approx( f0$x, f0$y, q_sel )$y
+    	f0	  <- density( y )
+    	fq0	  <- approx( f0$x, f0$y, q_sel )$y
 
     	res<- foreach( i = 1:iter, .combine = "rbind" ) %dopar% {
     		usim	<- rnorm( n , sd = sd )
     		rsim	<- rnorm( ne, sd = 1  )
     		y_b	<- X %*% b + sf2 %*% rsim + usim
-   		f_b	<- density( sample(y, replace=TRUE) )
+   		  f_b	<- density( sample(y, replace=TRUE) )
     		fq_b	<- approx( f_b$x, f_b$y, q_sel )$y
     		RIF_b	<- fq0 / fq_b * ( y_b - q_sel) + q_sel
     		sfres_sim	<- re_esfb( y = RIF_b, X = X, XSF0 = XSF0, M = M, meig = meig )
@@ -386,8 +385,15 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
     	if( boot == TRUE ){
     		mod_b	<-resf_boot( tau_sel = tau[ j ], q_sel = q[ j ], y = y,
     				     X = X, M = M, meig = meig, mod = mod, iter = iter )
+
+    		mod_b$B     <- t(t(mod_b$B) + mod$b[,1] - apply(mod_b$B,2,median) )
+    		mod_b$S     <- t(t(mod_b$S) + mod$s$Estimate - apply(mod_b$S,2,median) )
+    		mod_b$S[mod_b$S<0]<-0
+    		mod_b$S[,2][mod_b$S[,2]>1]<-1
+
     		SFb_boot_0  <- data.frame( t( mod_b$B ) )
     		SFs_boot_0  <- data.frame( t( mod_b$S ) )
+
     		SFb_boot2_00 <- t( apply( mod_b$B, 2, function( x ) quantile( x, probs = probs ) ) )
     		SFs_boot2_00 <- t( apply( mod_b$S, 2, function( x ) quantile( x, probs = probs ) ) )
     		SFb_p  <- 1 - abs( apply( mod_b$B, 2, function( x ) sum( x > 0 ) ) - iter / 2 ) / ( iter / 2 )

@@ -43,7 +43,7 @@ require(spdep)
 data(boston)
 y	<- boston.c[, "CMEDV" ]
 x	<- boston.c[,c("CRIM","ZN","INDUS", "CHAS", "NOX","RM", "AGE")]
-coords  <- boston.c[,c("LAT","LON")]
+coords  <- boston.c[,c("LON", "LAT")]
 
 #########Distance-based ESF
 meig 	<- meigen(coords=coords)

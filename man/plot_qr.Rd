@@ -2,7 +2,7 @@
 \alias{plot_qr}
 \title{Plot quantile regression coefficients estimated from SF-UQR}
 \usage{
-plot_qr( mod, pnum = 1, par = "b", cex.main = 22, cex.lab = 20, cex.axis = 18, lwd = 1.5 )
+plot_qr( mod, pnum = 1, par = "b", cex.main = 20, cex.lab = 18, cex.axis = 15, lwd = 1.5 )
 }
 \description{
 This function plots regression coefficients estimated from the spatial filter unconditional quantile regression (SF-UQR) model.

@@ -55,7 +55,7 @@ y	    <- boston.c[, "CMEDV" ]
 x	    <- boston.c[,c("CRIM","ZN","INDUS", "CHAS", "NOX","RM", "AGE",
                      "DIS" ,"RAD", "TAX", "PTRATIO", "B", "LSTAT")]
 xgroup<- boston.c[,"TOWN"]
-coords<- boston.c[,c("LAT","LON")]
+coords<- boston.c[,c("LON","LAT")]
 meig 	<- meigen(coords=coords)
 # meig<- meigen_f(coords=coords)  ## for large samples
 

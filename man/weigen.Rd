@@ -47,11 +47,11 @@ poly	    <- readOGR(system.file("shapes/boston_tracts.shp",package="spData")[1])
 weig1	    <- weigen( poly )
 
 ########## knn-based W
-coords    <- boston.c[,c("LAT", "LON")]
+coords    <- boston.c[,c("LON", "LAT")]
 weig2	    <- weigen( coords, type = "knn" )
 
 ########## Delaunay triangulation-based W
-coords    <- boston.c[,c("LAT", "LON")]
+coords    <- boston.c[,c("LON", "LAT")]
 weig3	    <- weigen( coords, type = "tri")
 
 ########## User-specified W

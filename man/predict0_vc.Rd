@@ -44,12 +44,12 @@ d       <- boston.c[ samp, ]    ## Data at observed sites
 y	      <- d[, "CMEDV"]
 x       <- d[,c("ZN", "LSTAT")]
 xconst  <- d[,c("CRIM", "NOX", "AGE", "DIS", "RAD", "TAX", "PTRATIO", "B", "RM")]
-coords  <- d[,c("LAT","LON")]
+coords  <- d[,c("LON", "LAT")]
 
 d0      <- boston.c[-samp, ]    ## Data at unobserved sites
 x0      <- d0[,c("ZN", "LSTAT")]
 xconst0 <- d0[,c("CRIM", "NOX", "AGE", "DIS", "RAD", "TAX", "PTRATIO", "B", "RM")]
-coords0 <- d0[,c("LAT","LON")]
+coords0 <- d0[,c("LON", "LAT")]
 
 ############ Model estimation
 meig 	  <- meigen( coords = coords )
