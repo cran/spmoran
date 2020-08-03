@@ -62,10 +62,22 @@ meig 	<- meigen(coords=coords)
 ######## Regression considering residual spatially dependence
 res	  <- resf(y = y, x = x, meig = meig)
 res
+plot_s(res)    ## spatially dependent component (intercept)
 
 ######## Regression considering residual spatially dependence and NVC
 ######## (coefficients or NVC is selected)
 #res2 <- resf(y = y, x = x, meig = meig, nvc = TRUE)
+#res2          ## Note: Coefficients on 5,6,and 13-th covariates
+               ## are estimated non-spatially varying (NVC)
+
+#plot_n(res2,5) ## 1D plot of 5-th NVC
+#plot_n(res2,6) ## 1D plot of 6-th NVC
+#plot_n(res2,13)## 1D plot of 13-th NVC
+
+#plot_s(res2)   ## spatially dependent component (intercept)
+#plot_s(res2,5) ## spatial plot of 5-th NVC
+#plot_s(res2,6) ## spatial plot of 6-th NVC
+#plot_s(res2,13)## spatial plot of 13-th NVC
 
 ######## Regression considering residual spatially dependence and NVC
 ######## (all the coefficients are NVCs)

@@ -9,7 +9,7 @@ resf_vc(y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst_nvc = FALSE,
 \description{
 The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), and group effects. Type of coefficients can be selected through BIC/AIC minimization. By default, it estimates a SVC model.
 
-Note: SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robust against spurious correlation (multicollinearity), so, stable (see Murakami and Griffith, 2020).
+Note: SNVCs can be mapped just like SVCs. SNVC model is more robust against spurious correlation (multicollinearity) and stable than SVC models (see Murakami and Griffith, 2020).
 }
 \arguments{
 \item{y}{Vector of explained variables (N x 1)}
@@ -79,17 +79,17 @@ meig 	  <- meigen(coords=coords)
 # meig	<- meigen_f(coords=coords)  ## for large samples
 
 ############## SVC modeling1 #################
-######## (SVC on x; Constant coefficients on xconst)
-res	    <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_sel = FALSE )
+######## (SVC or constant coefficients on x; Constant coefficients on xconst)
+res	    <- resf_vc(y=y,x=x,xconst=xconst,meig=meig )
 res
 
 plot_s(res,0) # Spatially varying intercept
-plot_s(res,1) # 1st SVC
+plot_s(res,1) # 1st SVC (Not shown because the SVC is estimated constant)
 plot_s(res,2) # 2nd SVC
 
 ############## SVC modeling2 #################
-######## (SVC or constant coefficients on x; Constant coefficients on xconst)
-#res2	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig )
+######## (SVC on x; Constant coefficients on xconst)
+#res2	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_sel = FALSE )
 
 ############## SVC modeling3 #################
 ######## - Group-level SVC or constant coefficients on x
@@ -110,10 +110,13 @@ plot_s(res,2) # 2nd SVC
 ######## - NVC or Constant coefficients on xconst
 
 #res5	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_nvc =TRUE, xconst_nvc=TRUE)
-#plot_s(res5,0)           # Spatially varying intercept
-#plot_s(res5,1)           # 1st SNVC
-#plot_s(res5,1,snvc=FALSE)# SVC in the 1st SNVC
-#plot_n(res5,1,xtype="x") # NVC in the 1st NVC
-#plot_n(res5,6,xtype="xconst")
+#plot_s(res5,0)            # Spatially varying intercept
+#plot_s(res5,1)            # Spatial plot of 1st SNVC (SVC + NVC)
+#plot_s(res5,1,btype="svc")# Spatial plot of SVC in the SNVC on x[,1]
+#plot_s(res5,1,btype="nvc")# Spatial plot of NVC in the SNVC on x[,1]
+#plot_n(res5,1)            # 1D plot of NVC in the SNVC on x[,1]
+
+#plot_s(res5,6,xtype="xconst")# Spatial plot of NVC in the SNVC on xconst[,6]
+#plot_n(res5,6,xtype="xconst")# 1D plot of NVC on xconst[,6]
 
 }

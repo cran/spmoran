@@ -70,7 +70,7 @@ resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst
         M0	<- M0[ id != 0, id != 0 ]
         id	<- id[ id != 0 ]
       }
-      if(sum( id != par0_sel ) == 0 ){
+      if( sum( id != par0_sel ) == 0 ){
         term2	  <- NULL
         term3_0	<- M[ id == par0_sel, id == par0_sel ]
       } else {
@@ -78,14 +78,23 @@ resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst
         term2		<- determinant( M0_sub )$modulus
         Msub_00	<- M[ id == par0_sel, id == par0_sel ]
         Msub_01	<- M[ id == par0_sel, id != par0_sel ]
-        term3_0	<- Msub_00 - Msub_01 %*% solve( M0_sub, tol = 1e-30 ) %*% t( Msub_01 )#, tol = 1e-30
+        if(sum(id == par0_sel)==1){####################### added
+          term3_0	<- Msub_00 - c( t( Msub_01 ) %*% solve( M0_sub, tol = 1e-30 ) %*% Msub_01 )#, tol = 1e-30
+        } else {
+          term3_0	<- Msub_00 - Msub_01 %*% solve( M0_sub, tol = 1e-30 ) %*% t( Msub_01 )#, tol = 1e-30
+        }################################################# added end
       }
       return(list(term2 = term2, term3_0 = term3_0))
     }
 
     Mdet_f	  	<- function( evSqrt, id, term2, term3_0, par0_sel ){
-      term1		<- sum( log( evSqrt ) ) * 2
-      diag( term3_0 ) <- diag( term3_0 ) + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+      term1		  <- sum( log( evSqrt ) ) * 2
+      if( dim( as.matrix( term3_0 ) )[1] == 1 ){########## added
+        term3_0 <- term3_0 + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+        term3_0 <- as.matrix(term3_0)
+      } else {                       ########## added end
+        diag( term3_0 ) <- diag( term3_0 ) + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+      }
       term3	  <- determinant( term3_0 )$modulus
       if( is.null( term2 )  ){
         Mdet    <- term1 + term3
@@ -130,10 +139,19 @@ resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst
     	Mdet		<- Mdet_f( id = id, par0_sel=par0_sel, term2 = term2, term3_0 = term3_0, evSqrt = evSqrt )
     	M2		<- M
     	for( j in 1:max( id ) ){
-   		diag( M[ id == j, id == j ])<-diag( M[ id == j, id == j ] ) + 1/evSqrt[ id[ -c( 1:nx ) ] == j ] ^ 2
+    	  if( sum( id == j )==1){################# added
+    	    M[ id == j, id == j ]       <- M[ id == j, id == j ] + 1/evSqrt[ id[ -c( 1:nx ) ] == j ] ^ 2
+    	  } else {
+    	    diag( M[ id == j, id == j ])<- diag( M[ id == j, id == j ] ) + 1/evSqrt[ id[ -c( 1:nx ) ] == j ] ^ 2
+    	  }####################################### added end
     	}
 
-    	diag(M0inv_00)	<- diag( M0inv_00 ) + evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+    	if( dim(as.matrix(M0inv_00))[1]==1){###### added
+    	  M0inv_00	      <- M0inv_00 + evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+    	} else {
+    	  diag(M0inv_00)	<- diag( M0inv_00 ) + evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+    	}######################################### added end
+
     	b_02_b		<- solve( M0inv_00, tol = 1e-30 ) %*% b_02
     	b_02		<- M0inv_01 %*% b_02_b
       b		<- b_01 - b_02
@@ -400,8 +418,30 @@ resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst
     	meig$sf	<- meig$sf[ , 1 : nev0 ]
     	meig$ev	<- meig$ev[   1 : nev0 ]
 
-    	ev	    <- meig$ev
+    	if( !is.null( xgroup ) ){ ########### added
+    	  xgroup  <- data.frame(xgroup)
+    	  ng	    <- dim( xgroup )[ 2 ]
+    	  if( ng == 1 ){
+    	    xg_num<- length( unique( xgroup[,1] ) ) - ng
+    	  } else {
+    	    xg_num<- sum( apply(xgroup,2,function(x) length(unique(x)))) - ng
+    	  }
+
+    	  nev0g   <- round( ( n - xg_num - nxf )/nsv ) - 2#
+    	  if( nev0 > nev0g ){
+    	    if( nev0g < 2 ){
+    	      stop("Error: Too many groups. Reduce variables in xgroup")
+    	    } else {
+    	      message( paste( "Note: ", nev0 - nev0g, " eigenvectors are omitted to stablize the estimates",sep=""))
+    	      nev0    <- nev0g
+    	      meig$sf	<- meig$sf[ , 1 : nev0 ]
+    	      meig$ev	<- meig$ev[   1 : nev0 ]
+    	    }
+    	  }
+    	}################################################ add end
+
     	X2	    <- meig$sf
+    	ev	    <- meig$ev
     	meig0   <- X2
     	id	    <- c( rep( 0, nsv ), rep( 0, nxf ), rep( 1, length( ev ) ) )
     	if( nsv >= 2 ){
@@ -412,8 +452,8 @@ resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst
     	}
 
     	if( is.null( xgroup ) == FALSE ){
-    	  xgroup<- data.frame(xgroup)
-    		ng	<- dim( xgroup )[ 2 ]
+    	  #xgroup<- data.frame(xgroup) #### deleted (moved to above)
+    		#ng	<- dim( xgroup )[ 2 ]    #### deleted (moved to above)
     		xg_id0	<- nsv + 1
     		xg_idid2<- NULL
     		xg_link_id <- list( NULL )
@@ -439,9 +479,9 @@ resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst
     			xgroup_datt2<- merge(xgroup_datt,xg00_datt,by="xgroup_sub",all.x=TRUE)
     			xg_link_id[[ ff ]]  <- xgroup_datt2[order(xgroup_datt2$id),"id_b_g"]
     		}
+    		X2	    <- cbind( X2, Xg )
+    		id	    <- c(id, xg_id )
 
-    		X2	<- cbind( X2, Xg )
-    		id	<- c(id, xg_id )
     	} else {
     		ng	<- 0
     	}
@@ -530,7 +570,7 @@ resf_vc 		<- function( y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst
 
     		LL0	<- LL
     		n_omit	<- 0
-    		for( par0_sel in (1:( nsv+ ng + nnxf + nnsv ))[id_exist]){
+    		for( par0_sel in (1:( nsv+ ng + nnxf + nnsv ))[id_exist]){#
     			evSqrt	<- NULL
     			par0_sq	<- par0 ^ 2
     			for( i in 1:nsv ){

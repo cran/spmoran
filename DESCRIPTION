@@ -1,8 +1,8 @@
 Package: spmoran
 Type: Package
 Title: Moran Eigenvector-Based Scalable Spatial Additive Mixed Modeling
-Version: 0.2.0-1
-Date: 2020-05-31
+Version: 0.2.0-2
+Date: 2020-08-03
 Author: Daisuke Murakami
 Maintainer: Daisuke Murakami <dmuraka@ism.ac.jp>
 Description: Functions for estimating Moran eigenvector-based
@@ -16,6 +16,6 @@ Imports: sp, fields, vegan, Matrix, doParallel, foreach, ggplot2,
 Suggests: R.rsp, rgdal
 VignetteBuilder: R.rsp
 NeedsCompilation: no
-Packaged: 2020-05-31 09:59:43 UTC; matsui_lab
+Packaged: 2020-08-02 17:06:10 UTC; matsui_lab
 Repository: CRAN
-Date/Publication: 2020-05-31 14:30:03 UTC
+Date/Publication: 2020-08-03 04:30:03 UTC

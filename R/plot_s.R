@@ -1,26 +1,45 @@
 
-plot_s   <- function( mod, xnum = 1, snvc =TRUE, pmax = NULL, ncol = 8, col = NULL,
+plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, ncol = 8, col = NULL,
                       inv =FALSE, brks = "regular", cex = 1, nmax = 20000 ){
 
   pmax0      <- pmax
   xnum       <- xnum + 1
   if( (class(mod) == "resf_vc")|(class(mod) == "besf_vc") ){
 
-    if( snvc ){
-      dd     <-data.frame(coords = mod$other$coords,b_vc = mod$b_vc, p_vc = mod$p_vc )
+    if( xtype == "xconst" ){
+      xnum   <- xnum - 1
+      dd     <- data.frame(coords = mod$other$coords,b_vc = mod$c_vc, p_vc = mod$cp_vc )
+      xname    <-names( mod$c_vc )
+      nx       <-length( xname )
+      names(dd)<-c("px","py",xname,paste(xname,"_p",sep=""))
     } else {
-      dd     <-data.frame(coords = mod$other$coords,b_vc = mod$B_vc_s[[1]], p_vc = mod$B_vc_s[[4]] )
+      if( btype == "snvc" ){
+        dd     <- data.frame(coords = mod$other$coords,b_vc = mod$b_vc, p_vc = mod$p_vc )
+      } else if( btype == "svc" ) {
+        dd     <- data.frame(coords = mod$other$coords,b_vc = mod$B_vc_s[[1]], p_vc = mod$B_vc_s[[4]] )
+      } else if( btype == "nvc" ) {
+        dd     <- data.frame(coords = mod$other$coords,b_vc = mod$B_vc_n[[1]], p_vc = mod$B_vc_n[[4]] )
+
+      }
+      xname    <-names( mod$b_vc )
+      xname[ 1 ]<-"Spatially.dependent.intercept"
+      nx       <-length( xname )
+      names(dd)<-c("px","py",xname,paste(xname,"_p",sep=""))
     }
-    xname    <-names( mod$b_vc )
-    xname[ 1 ]<-"Spatially.dependent.intercept"
-    nx       <-length( xname )
-    names(dd)<-c("px","py",xname,paste(xname,"_p",sep=""))
 
   } else if( (class(mod) == "esf")|(class(mod) == "resf")|(class(mod) == "besf") ){
-    dd       <-data.frame(coords = mod$other$coords,sf = mod$sf )
-    names(dd)<-c("px","py","Spatially.depepdent.component" )
-    xnum     <-1
-    nx       <-0
+    if( ( (xnum >1)|(btype=="nvc") )&( !is.null( mod$c_vc[1,1] ) ) ){
+      dd     <- data.frame(coords = mod$other$coords,b_vc = mod$c_vc, p_vc = mod$cp_vc )
+      xnum   <- xnum - 1
+      xname    <-names( mod$c_vc )
+      nx       <-length( xname )
+      names(dd)<-c("px","py",xname,paste(xname,"_p",sep=""))
+    } else {#
+      dd       <-data.frame(coords = mod$other$coords,sf = mod$sf )
+      names(dd)<-c("px","py","Spatially.depepdent.component" )
+      xnum     <-1
+      nx       <-0
+    }
   }
 
   if( dim( dd )[ 1 ] > nmax ){
