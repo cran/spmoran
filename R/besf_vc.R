@@ -1361,7 +1361,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
 
   #evSqrt2 # evSqrts = evSqrts, evSqrts_n = evSqrts_n,### b_s = bb, b_covs = bb_cov,
   other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nxf = nxf, xf_id = xf_id,# df = df,
-                  model = "resf_vc", nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num,
+                  model = "resf_vc", nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num, method=method,
                   x = x, xconst = xconst, coords = coords )#, Bias=bias
 
   result    <- list( b_vc = b_vc, bse_vc = bse_vc, z_vc = bz_vc, p_vc = bp_vc,
@@ -1412,16 +1412,16 @@ print.besf_vc <- function(x, ...)
     print(cpv)
   }
   cat("\n----Variance parameters----------------------------------\n")
-  cat("\nSpatial variation (coefficients on x):\n")
+  cat("\nSpatial effects (coefficients on x):\n")
   if( is( x$s )[1] != "list" ){
     print( x$s )
   } else {
     print(x$s[[1]])
-    cat("\nNon-spatial variation (coefficients on x):\n")
+    cat("\nNon-spatial effects (coefficients on x):\n")
     print(x$s[[2]])
   }
   if( !is.null(x$s_c) ){
-    cat("\nNon-spatial variation (coefficients on xconst):\n")
+    cat("\nNon-spatial effects (coefficients on xconst):\n")
     print(x$s_c)
   }
   #if( !is.null(x$s_g) ){
@@ -1430,4 +1430,9 @@ print.besf_vc <- function(x, ...)
   #}
   cat("\n----Error statistics-------------------------------------\n")
   print(x$e)
+  if( x$other$method=="reml"){
+    cat('\nNote: The AIC and BIC values are based on the restricted likelihood.')
+    cat('\n      Use method ="ml" for comparison of models with different fixed effects (x and xconst)\n')
+  }
+  invisible(x)
 }

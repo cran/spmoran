@@ -6,8 +6,8 @@ meigen0	<- function( meig, coords0, s_id0 = NULL ){
   }
 
   if( !is.null( meig$other$s_id )[ 1 ] ){
-    if( is.null( s_id0 )) {
-      stop( "s_id0 must be defined" )
+    if( is.null( s_id0 ) ) {
+      stop( "s_id0 must be provided" )
     } else {
       coords0_0 <-coords0
       coords0_x<-tapply(coords0[,1],s_id0,mean)
@@ -20,25 +20,34 @@ meigen0	<- function( meig, coords0, s_id0 = NULL ){
     }
   }
 
-  if( meig$other$fast == 0){
-    	sfk	<- meig$sf
-    	evk	<- meig$ev
-    	coordk	<- meig$other$coords
+  if( meig$other$fast == 0 ){
+    if( !is.null( meig$other$s_id )[ 1 ] ){
+      sfk   <-meig$other$sfk
+      evk   <-meig$ev
+      coordk<-meig$other$coordk
+      Cmean <-meig$other$Cmeank
+    } else {
+      sfk	  <- meig$sf
+      evk	  <- meig$ev
+      coordk<- meig$other$coords
+      Cmean <- meig$other$Cmean
+    }
   } else {
     	sfk	<- meig$other$sfk
     	evk	<- meig$other$evk
     	coordk	<- meig$other$coordk
+    	Cmean <- meig$other$Cmean
   }
   h		<- meig$other$h
   nm	<- dim( coords0 )[ 1 ]
-  sfk	<- sfk %*% diag( 1 / ( evk + 1 ) )
+  sfk	<- sfk %*% diag( 1 / (evk+1) )
   Dk	<- rdist( coordk, coords0 )
   if( meig$other$model == "exp" ){
-    	sfk	<- t( exp( -Dk / h ) - meig$other$Cmean ) %*% sfk
+    	sfk	<- t( exp( -Dk / h ) - Cmean ) %*% sfk
   } else if( meig$other$model == "gau" ){
-    	sfk	<- t( exp( - ( Dk / h ) ^ 2 ) - meig$other$Cmean ) %*% sfk
+    	sfk	<- t( exp( - ( Dk / h ) ^ 2 ) - Cmean ) %*% sfk
   } else if( meig$other$model == "sph" ){
-    	sfk	<- t( ifelse( Dk < h , 1 - 1.5 * ( Dk / h ) + 0.5 * ( Dk / h ) ^ 3, 0 ) - meig$other$Cmean ) %*% sfk
+    	sfk	<- t( ifelse( Dk < h , 1 - 1.5 * ( Dk / h ) + 0.5 * ( Dk / h ) ^ 3, 0 ) - Cmean ) %*% sfk
   }
   if( !is.null( meig$other$s_id )[ 1 ] ){
       sfk		<- sfk[ s_id_dat2$s_id_num,]

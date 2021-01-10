@@ -50,7 +50,7 @@ Note: SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robus
 \item{e}{Vector whose elements are residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). When method = "ml", restricted log-likelihood (rlogLik) is replaced with log-likelihood (logLik)}
 \item{pred}{Vector of predicted values (N x 1)}
 \item{resid}{Vector of residuals (N x 1)}
-\item{other}{List of other outcomes, which are internally used}
+\item{other}{List of other outputs, which are internally used}
 }
 \references{
 Muller, S., Scealy, J.L., and Welsh, A.H. (2013) Model selection in linear mixed models. Statistical Science, 28 (2), 136-167.

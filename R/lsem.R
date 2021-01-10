@@ -158,7 +158,9 @@ lsem		<-function( y, x, weig, method = "reml" ){
     rownames( e_stat ) <- c( "resid_SE", "adjR2(cond)", "logLik", "AIC", "BIC" )
   }
 
-  result  <-list( b = b_par, s = sp_par, e = e_stat, r = r_par, pred = pred, resid = resid, call = match.call() )
+  other       <- list( method = method )
+  result  <-list( b = b_par, s = sp_par, e = e_stat, r = r_par, pred = pred,
+                  resid = resid, other = other, call = match.call() )
   class( result ) <- "lsem"
   return( result )
 }
@@ -174,5 +176,9 @@ print.lsem <- function(x, ...)
   print(x$s)
   cat("\n----Error statistics--------------------------\n")
   print(x$e)
+  if( x$other$method=="reml"){
+    cat('\nNote: The AIC and BIC values are based on the restricted likelihood. ')
+    cat('\n      Use method ="ml" for comparison of models with different fixed effects (x)\n')
+  }
   invisible(x)
 }

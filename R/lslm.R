@@ -304,8 +304,10 @@ res	<- optim( fn = lik_llslm, c( 0, 1 ), ev=ev,
     	sp_par[ 2, ]    <- sp_par[ 2, ] * sqrt( sig )
     }
 
+    other       <- list( method = method )
     result      <- list( b = b_par, s = sp_par, e = e_stat, de = DE_res, ie = IE_res, r = r_par,
-                         pred = pred, resid = resid, call = match.call() )
+                         pred = pred, resid = resid,
+                         other = other, call = match.call() )
     class( result ) <- "lslm"
     return( result )
 }
@@ -332,4 +334,9 @@ print.lslm <- function(x, ...)
   }
   cat("\n----Error statistics--------------------------\n")
   print(x$e)
+  if( x$other$method=="reml"){
+    cat('\nNote: The AIC and BIC values are based on the restricted likelihood.')
+    cat('\n      Use method ="ml" for comparison of models with different fixed effects (x)\n')
+  }
+  invisible(x)
 }

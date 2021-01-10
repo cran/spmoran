@@ -36,7 +36,7 @@ besf  	<- function( y, x = NULL, nvc = FALSE, nvc_sel = TRUE, coords, s_id = NUL
   bias  <- res$other$bias
 
 
-  other	  <- list( sf_alpha= sf_alpha, x_id = x_id, model = "resf", par0 = par0, nx = nx,
+  other	  <- list( sf_alpha= sf_alpha, x_id = x_id, model = "resf", par0 = par0, nx = nx, method=method,
                    df = df, bias=bias, x = res$other$xconst, coords = res$other$coords )
 
   result  <-list( b = b, c_vc=c_vc, cse_vc=cse_vc, ct_vc = ct_vc, cp_vc = cp_vc,
@@ -52,7 +52,7 @@ print.besf <- function(x, ...)
   cat("Call:\n")
   print(x$call)
   if( !is.null(x$c_vc) ){
-    cat("\n----Non-spatially varying coefficients (summary)----\n")
+    cat("\n----Non-spatially varying coefficients on x (summary) ----\n")
     cat("\nCoefficients:\n")
     xx2 <- data.frame(x$b$Estimate[1],x$c_vc)
     names(xx2)[1]<-"Intercept"
@@ -77,10 +77,14 @@ print.besf <- function(x, ...)
   cat("\nSpatial effects (residuals):\n")
   print(x$s)
   if( is.null(x$s_c) == FALSE ){
-    cat("\nNon-spatially varying coefficients:\n")
+    cat("\nNon-spatial effects (coefficients on x):\n")
     print(x$s_c)
   }
   cat("\n----Error statistics--------------------------\n")
   print(x$e)
+  if( x$other$method=="reml"){
+    cat('\nNote: The AIC and BIC values are based on the restricted likelihood.')
+    cat('\n      Use method ="ml" for comparison of models with different fixed effects (x)\n')
+  }
   invisible(x)
 }

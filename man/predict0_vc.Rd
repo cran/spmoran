@@ -15,7 +15,7 @@ This function predicts explained variables and spatially and non-spatially varyi
 \item{xconst0}{Matrix of explanatory variables at predicted sites whose coefficients are assumed constant (or NVC) across space (N_0 x K_const). Default is NULL}
 }
 \value{
-\item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (i.e., component explained by x0 and xconst0) (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group)}
+\item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (i.e., component explained by x0 and xconst0) (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group) If tr_num > 0 or tr_nonneg ==TRUE (i.e., y is transformed) in \code{\link{resf_vc}}, another column including the predicted values in the transformed/normalized scale (pred_trans) is inserted into the second column}
 \item{b_vc}{Matrix of estimated spatially (and non-spatially) varying coefficients (S(N)VCs) on x0 (N_0 x K)}
 \item{bse_vc}{Matrix of estimated standard errors for the S(N)VCs (N_0 x K)}
 \item{t_vc}{Matrix of estimated t-values for the S(N)VCs (N_0 x K)}

@@ -14,7 +14,7 @@ This function predicts explained variables using eigenvector spatial filtering (
 \item{xgroup0}{Matrix of group IDs that may be group IDs (integers) or group names (N_0 x K_{group}). Default is NULL}
 }
 \value{
-\item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group)}
+\item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group). If tr_num > 0 or tr_nonneg ==TRUE (i.e., y is transformed) in \code{\link{resf}}, another column including the predicted values in the transformed/normalized scale (pred_trans) is inserted into the second column}
 \item{c_vc}{Matrix of estimated non-spatially varying coefficients (NVCs) on x0 (N x K). Effective if nvc =TRUE in \code{\link{resf}}}
 \item{cse_vc}{Matrix of standard errors for the NVCs on x0 (N x K).Effective if nvc =TRUE in \code{\link{resf}}}
 \item{ct_vc}{Matrix of t-values for the NVCs on x0 (N x K). Effective if nvc =TRUE in \code{\link{resf}}}
@@ -36,7 +36,7 @@ y	      <- d[, "CMEDV"]
 x       <- d[,c("ZN","INDUS", "NOX","RM", "AGE", "DIS")]
 coords  <- d[,c("LON", "LAT")]
 
-d0      <- boston.c[-samp, ][1,]  ## Data at unobserved sites
+d0      <- boston.c[-samp, ]  ## Data at unobserved sites
 y0	    <- d0[, "CMEDV"]
 x0      <- d0[,c("ZN","INDUS", "NOX","RM", "AGE", "DIS")]
 coords0 <- d0[,c("LON", "LAT")]

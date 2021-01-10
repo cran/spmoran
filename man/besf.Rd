@@ -38,7 +38,7 @@ Memory-free implementation of RE-ESF-based spatial regression for very large sam
 \item{sf}{Vector of estimated spatial dependent component (N x 1)}
 \item{pred}{Vector of predicted values (N x 1)}
 \item{resid}{Vector of residuals (N x 1)}
-\item{other}{List of other outcomes, which are internally used}
+\item{other}{List of other outputs, which are internally used}
 }
 \references{
 Griffith, D. A. (2003). Spatial autocorrelation and spatial filtering: gaining understanding through theory and scientific visualization. Springer Science & Business Media.

@@ -20,6 +20,7 @@ This function estimates the low rank spatial error model.
 \item{r}{Vector of estimated random coefficients on the spatial eigenvectors (L x 1)}
 \item{pred}{Vector of predicted values (N x 1)}
 \item{resid}{Vector of residuals (N x 1)}
+\item{other}{List of other outputs, which are internally used}
 }
 \references{
 Murakami, D., Seya, H. and Griffith, D.A. (2018) Low rank spatial econometric models. Arxiv.

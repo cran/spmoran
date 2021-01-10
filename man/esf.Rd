@@ -23,7 +23,7 @@ This function estimates the linear eigenvector spatial filtering (ESF) model. Th
 \item{sf}{Vector of estimated spatial dependent component (E\eqn{\gamma}) (N x 1)}
 \item{pred}{Vector of predicted values (N x 1)}
 \item{resid}{Vector of residuals (N x 1)}
-\item{other}{List of other outcomes, which are internally used}
+\item{other}{List of other outputs, which are internally used}
 }
 \references{
 Griffith, D. A. (2003). Spatial autocorrelation and spatial filtering: gaining understanding through theory and scientific visualization. Springer Science & Business Media.

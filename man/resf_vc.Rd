@@ -1,13 +1,15 @@
 \name{resf_vc}
 \alias{resf_vc}
-\title{Spatially and non-spatially varying coefficient (SNVC) modeling}
+\title{Spatially and non-spatially varying coefficient (SNVC) modeling for Gaussian and non-Gaussian continuous data}
+
 \usage{
-resf_vc(y, x, xconst = NULL, xgroup = NULL, x_nvc = FALSE, xconst_nvc = FALSE,
-        x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num = 5,
-        meig, method = "reml", penalty = "bic", maxiter = 30 )
+resf_vc(y, x, xconst = NULL, xgroup = NULL, weight = NULL,
+        x_nvc = FALSE, xconst_nvc = FALSE, x_sel = TRUE, x_nvc_sel = TRUE,
+        xconst_nvc_sel = TRUE, nvc_num = 5, meig, method = "reml",
+        penalty = "bic", maxiter = 30, tr_num = 0, tr_nonneg = FALSE )
 }
 \description{
-The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), and group effects. Type of coefficients can be selected through BIC/AIC minimization. By default, it estimates a SVC model.
+The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), and group effects. The random-effects eigenvector spatial filtering (RE-ESF), which is a low rank Gaussian process approach, is used for the spatial process modeling. While the resf_vc function estimates a SVC model by default, the type of coefficients (constant, SVC, NVC, or SNVC) can be selected through a BIC/AIC minimization. In addition, to transform non-Gaussian explained variables to Gaussian variables, the compositionally-warping function and/or the Box-Cox transformation is available (see Murakami et al., 2020).
 
 Note: SNVCs can be mapped just like SVCs. SNVC model is more robust against spurious correlation (multicollinearity) and stable than SVC models (see Murakami and Griffith, 2020).
 }
@@ -16,6 +18,7 @@ Note: SNVCs can be mapped just like SVCs. SNVC model is more robust against spur
 \item{x}{Matrix of explanatory variables with spatially varying coefficients (SVC) (N x K)}
 \item{xconst}{Matrix of explanatory variables with constant coefficients (N x K_{c}). Default is NULL}
 \item{xgroup}{Matrix of group IDs. The IDs may be group numbers or group names (N x K_{g}). Default is NULL}
+\item{weight}{Vector of weights for samples (N x 1). When non-NULL, the adjusted R-squared value is evaluated for weighted explained variables. Default is NULL}
 \item{x_nvc}{If TRUE, SNVCs are assumed on x. Otherwise, SVCs are assumed. Default is FALSE}
 \item{xconst_nvc}{If TRUE, NVCs are assumed on xconst. Otherwise, constant coefficients are assumed. Default is FALSE}
 \item{x_sel}{If TRUE, type of coefficient (SVC or constant) on x is selected through a BIC (default) or AIC minimization. If FALSE, SVCs are assumed across x. Alternatively, x_sel can be given by column number(s) of x. For example, if x_sel = 2, the coefficient on the second explanatory variable in x is SVC and the other coefficients are constants. The Default is TRUE}
@@ -24,8 +27,13 @@ Note: SNVCs can be mapped just like SVCs. SNVC model is more robust against spur
 \item{nvc_num}{Number of basis functions used to model NVC. An intercept and nvc_num natural spline basis functions are used to model each NVC. Default is 5}
 \item{meig}{Moran eigenvectors and eigenvalues. Output from \code{\link{meigen}} or \code{\link{meigen_f}}}
 \item{method}{Estimation method. Restricted maximum likelihood method ("reml") and maximum likelihood method ("ml") are available. Default is "reml"}
-\item{penalty}{Penalty to select varying coefficients and stablize the estimates. The current options are "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion  (2K) (see Muller et al., 2013). Default is "bic"}
+\item{penalty}{Penalty to select varying coefficients and stablize the estimates. The current options are "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion  (2K). Default is "bic"}
 \item{maxiter}{Maximum number of iterations. Default is 30}
+\item{tr_num}{Number of the SAL transformations ( SinhArcsinh and Affine, where the use of "L" stems from the "Linear") used to transform non-Gaussian explained variables to Gaussian variables. Default is 0}
+\item{tr_nonneg}{If TRUE, the Box-Cox transfromation used to transform positive non-Gaussian explained variables to Gaussian variables. If tr_num > 0 and tr_nonneg == TRUE, the Box-Cox transformation is applied first. Then, th SAL transformation is applied tr_num times. Default is FALSE}
+}
+\details{
+If tr_num >0, the resf function iterates the SAL transformation tr_num times to transform the explained variables to Gaussian variables. The SAL transformation is defined as SAL(y)=a+b*sinh(c*arcsinh(y)-d) where {a,b,c,d} are parameters. Based on Rois and Tober (2019), an iteration of the SAL transformation approximates a wide variety of non-Gaussian distributions without explicitly assuming data distribution. As a result, our spatial regression approach is applicable to a wide variety of non-Gaussian continuous data too. For non-negative explained variables, a Box-Cox transformation is available prior to the SAL transformations by specifying tr_nonneg >0. tr_num and tr_nonneg can be selected by comparing the BIC (or AIC) value across models. This compositionally-warped spatial regression approach is detailed in Murakami et al. (2020).
 }
 \value{
 \item{b_vc}{Matrix of estimated spatially and non-spatially varying coefficients (SNVC = SVC + NVC) on x (N x K)}
@@ -45,21 +53,23 @@ Note: SNVCs can be mapped just like SVCs. SNVC model is more robust against spur
 \item{s_g}{Vector of standard errors of the group effects}
 \item{vc}{List indicating whether SVC/NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed (replaced with constant) whreas 0 indicates removed}
 \item{e}{Vector whose elements are residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). When method = "ml", restricted log-likelihood (rlogLik) is replaced with log-likelihood (logLik)}
-\item{pred}{Vector of predicted values (N x 1)}
+\item{pred}{Vector of predicted values (N x 1). If tr_num > 0 or tr_nonneg == TRUE (i.e., y is trnsformed), another column including the predicted values in the transformed/normalized scale (pred_trans) is inserted into the second column}
+\item{tr_par}{List of the estimated parameters in the tr_num SAL transformations}
+\item{tr_bpar}{The estimated parameter in the Box-Cox transformation}
+\item{tr_y}{Vector of the transformed explaied variables}
 \item{resid}{Vector of residuals (N x 1)}
-\item{other}{List of other outcomes, which are internally used}
+\item{other}{List of other outputs, which are internally used}
 }
 \references{
+Murakami, D., Kajita, M., Kajita, S. and Matsui, T. (2020) Compositionally-warped additive mixed modeling for a wide variety of non-Gaussian data, Arxiv.
 
-Murakami, D., Yoshida, T., Seya, H., Griffith, D.A., and Yamagata, Y. (2017) A Moran coefficient-based mixed effects approach to investigate spatially varying relationships. Spatial Statistics, 19, 68-89.
-
-Murakami, D., and Griffith, D.A. (2019) Spatially varying coefficient modeling for large datasets: Eliminating N from spatial regressions. Spatial Statistics, 30, 39-64.
+Rios, G. and Tobar, F. (2019) Compositionally-warped Gaussian processes. Neural Networks, 118, 235-246.
 
 Murakami, D., and Griffith, D.A. (2020) Balancing spatial and non-spatial variations in varying coefficient modeling: a remedy for spurious correlation. ArXiv.
 
-Griffith, D. A. (2003) Spatial autocorrelation and spatial filtering: gaining understanding through theory and scientific visualization. Springer Science & Business Media.
+Murakami, D., Yoshida, T., Seya, H., Griffith, D.A., and Yamagata, Y. (2017) A Moran coefficient-based mixed effects approach to investigate spatially varying relationships. Spatial Statistics, 19, 68-89.
 
-Muller, S., Scealy, J.L., and Welsh, A.H. (2013) Model selection in linear mixed models. Statistical Science, 28 (2), 136-167.
+Griffith, D. A. (2003) Spatial autocorrelation and spatial filtering: gaining understanding through theory and scientific visualization. Springer Science & Business Media.
 }
 \author{
 Daisuke Murakami
@@ -79,7 +89,8 @@ meig 	  <- meigen(coords=coords)
 # meig	<- meigen_f(coords=coords)  ## for large samples
 
 ############## SVC modeling1 #################
-######## (SVC or constant coefficients on x; Constant coefficients on xconst)
+######## - SVC or constant coefficients on x
+######## - Constant coefficients on xconst
 res	    <- resf_vc(y=y,x=x,xconst=xconst,meig=meig )
 res
 
@@ -87,9 +98,25 @@ plot_s(res,0) # Spatially varying intercept
 plot_s(res,1) # 1st SVC (Not shown because the SVC is estimated constant)
 plot_s(res,2) # 2nd SVC
 
+############## Compositionally-warped SVC modeling #################
+######## - SVC or constant coefficients on x
+######## - Constant coefficients on xconst
+######## - 2 SAL transformations on y
+
+#res2	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, tr_num = 2 )
+#res2                   # tr_num and tr_nonneg can be selected by comparing BIC (or AIC)
+#coef_marginal_vc(res2) # marginal effects of x.
+                        # The median might be useful as a summary statistic
+
+######## - 2 SAL transformations + Box-Cox transformation on y
+
+#res3	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, tr_num = 2, tr_nonneg=TRUE )
+#res3
+#coef_marginal_vc(res3)
+
 ############## SVC modeling2 #################
 ######## (SVC on x; Constant coefficients on xconst)
-#res2	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_sel = FALSE )
+#res4	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_sel = FALSE )
 
 ############## SVC modeling3 #################
 ######## - Group-level SVC or constant coefficients on x
@@ -97,26 +124,35 @@ plot_s(res,2) # 2nd SVC
 ######## - Group effects
 
 #meig_g <- meigen(coords, s_id=xgroup)
-#res3	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig_g,xgroup=xgroup)
+#res5	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig_g,xgroup=xgroup)
 
 ############## SNVC modeling1 #################
 ######## - SNVC, SVC, NVC, or constant coefficients on x
 ######## - Constant coefficients on xconst
 
-#res4	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_nvc =TRUE)
+#res6	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_nvc =TRUE)
+
+
+############## Compositionally-warped SNVC modeling #################
+######## - SNVC, SVC, NVC, or constant coefficients on x
+######## - 2 SAL transformations + Box-Cox transformation on y
+
+#res7	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_nvc =TRUE, tr_num = 2, tr_nonneg=TRUE)
+#res7       # tr_num and tr_nonneg can be selected by comparing BIC (or AIC)
+
 
 ############## SNVC modeling2 #################
 ######## - SNVC, SVC, NVC, or constant coefficients on x
 ######## - NVC or Constant coefficients on xconst
 
-#res5	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_nvc =TRUE, xconst_nvc=TRUE)
-#plot_s(res5,0)            # Spatially varying intercept
-#plot_s(res5,1)            # Spatial plot of 1st SNVC (SVC + NVC)
-#plot_s(res5,1,btype="svc")# Spatial plot of SVC in the SNVC on x[,1]
-#plot_s(res5,1,btype="nvc")# Spatial plot of NVC in the SNVC on x[,1]
-#plot_n(res5,1)            # 1D plot of NVC in the SNVC on x[,1]
+#res8	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_nvc =TRUE, xconst_nvc=TRUE)
+#plot_s(res8,0)            # Spatially varying intercept
+#plot_s(res8,1)            # Spatial plot of 1st SNVC (SVC + NVC)
+#plot_s(res8,1,btype="svc")# Spatial plot of SVC in the SNVC on x[,1]
+#plot_s(res8,1,btype="nvc")# Spatial plot of NVC in the SNVC on x[,1]
+#plot_n(res8,1)            # 1D plot of NVC in the SNVC on x[,1]
 
-#plot_s(res5,6,xtype="xconst")# Spatial plot of NVC in the SNVC on xconst[,6]
-#plot_n(res5,6,xtype="xconst")# 1D plot of NVC on xconst[,6]
+#plot_s(res8,6,xtype="xconst")# Spatial plot of NVC in the SNVC on xconst[,6]
+#plot_n(res8,6,xtype="xconst")# 1D plot of NVC on xconst[,6]
 
 }

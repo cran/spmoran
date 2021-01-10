@@ -63,14 +63,15 @@ meigen_f	<- function( coords, model = "exp", enum = 200, s_id = NULL ){
 
     	if( !is.null( s_id )[ 1 ]){
     	  sf_ap		<- sf_ap[ s_id_dat2$s_id_num,]
-    	  Cmean   <- Cmean[ s_id_dat2$s_id_num ]
+    	  #Cmean   <- Cmean[ s_id_dat2$s_id_num ]
     	  coords  <- coords0
     	}
 
    	  sf0	<- as.matrix( sf0   [ , ev_full > 1e-08 ] )
     	ev0	<- ev0   [   ev_full > 1e-08 ] -1
     	other	<- list( coordk = coordk, sfk = sf0, evk = ev0, Cmean = Cmean, h = h, model = model, fast = 1,
-    	               coords = coords)
+    	               coords = coords, s_id = s_id)
+
     	mes	<- paste( " ", length( ev_ap ), "/", nn, " eigen-pairs are approximated", sep = "" )
     	message( mes )
     	result	<- list( sf  =sf_ap, ev = ev_ap, ev_full = ev_full, other = other )

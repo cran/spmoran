@@ -54,13 +54,22 @@ meigen		<- function( coords, model = "exp", threshold = 0, enum = NULL, cmat = N
     }
     sf		<- as.matrix( eigenC$vectors[ , sel ] )
     if( !is.null( s_id )[ 1 ]){
+      sfk    <-sf
+      Cmeank <-Cmean
+      coordk <-coords
+      
       sf		<- sf[ s_id_dat2$s_id_num,]
       Cmean <- Cmean[ s_id_dat2$s_id_num ]
       coords<- coords0
+    } else {
+      sfk    <-NULL
+      Cmeank <-NULL
+      coordk<-NULL
     }
 
     ev		<- eigenC$values [ sel ]
-    other	<- list( coords = coords, Cmean = Cmean, h = h, model = model, fast = 0, s_id = s_id )
+    other	<- list( coords = coords, Cmean = Cmean, h = h, model = model, fast = 0, s_id = s_id, 
+                   sfk = sfk, Cmeank = Cmeank, coordk = coordk )
     mes		<- paste( " ", length( ev ), "/", length( eigenC$values ), " eigen-pairs are extracted", sep = "" )
     message( mes )
     return( list( sf = sf, ev = ev, ev_full = eigenC$values, other = other ) )
