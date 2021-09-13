@@ -1,7 +1,9 @@
-predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL ){
+predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
+                         offset0 = NULL, weight0 = NULL, compute_quantile = FALSE ){
+
+  if(class( mod ) !="resf_vc" ) stop("Error: The model is not an output from the resf_vc fucntion")
 
   {
-
     af <-function(par,y) par[1]+par[2]*y
     sc <-function(par,y) (y-par[1])/par[2]
     sa <-function(par,y) sinh(par[1]*asinh(y)-par[2])
@@ -118,7 +120,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
     }
 
     ######## Negative log-likelihood (SAL distribution)
-    NLL_sal<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,tr_nonneg=FALSE,jackup){
+    NLL_sal<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup){
       n   <-length(y)
       par2<-list(NULL)
       for(kk in 1:k){
@@ -133,7 +135,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
         }
       }
 
-      if(tr_nonneg){
+      if(y_nonneg){
         np_b  <-length(par)
         bc_par<-par[(np_b-1):np_b]
         bc_par[2]<-abs(bc_par[2])
@@ -154,7 +156,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
       nll <- ee/2 - comp
     }
 
-    NLL_sal2<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,tr_nonneg=FALSE,jackup){
+    NLL_sal2<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup){
       n   <-length(y)
       par2<-list(NULL)
       for(kk in 1:k){
@@ -168,7 +170,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
         }
       }
 
-      if(tr_nonneg){
+      if(y_nonneg){
         np_b    <-length(par)
         bc_par<-par[(np_b-1):np_b]
         bc_par[2]<-abs(bc_par[2])
@@ -217,7 +219,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
       return(list(z=z, b=b, loglik=loglik,comp=comp,z_ms=z_ms))#
     }
 
-    lik_resf_vc_tr <- function( par, k, tr_nonneg=FALSE,noconst_last=TRUE, X,
+    lik_resf_vc_tr <- function( par, k, y_nonneg=FALSE,noconst_last=TRUE, X,
                                 evSqrt, y0, n, nx, emet,M0,Minv,term1,null_dum3=NULL,jackup ){
       tr_par       <- par
       if(k > 0){
@@ -232,7 +234,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
           }
         }
 
-        if(tr_nonneg){
+        if(y_nonneg){
           np_b  <-length(tr_par)
           bc_par<-tr_par[(np_b-1):np_b]
           #if(bc_par[1] < -0.5) bc_par[1] <- -0.5###################### added 2020/12/14
@@ -252,7 +254,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
           comp  <- 10^100
         }
 
-      } else if(tr_nonneg){
+      } else if(y_nonneg){
         z0      <- bc(par=tr_par,y=y0,jackup=jackup)
         z_ms    <- c(mean(z0),sd(z0))
         z       <- (z0-z_ms[1])/z_ms[2]
@@ -284,7 +286,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
       return( loglik[ 1 ] )
     }
 
-    lm_cw<-function(y, M, Minv, m0, k=2,noconst_last=TRUE,tr_nonneg=FALSE,jackup){
+    lm_cw<-function(y, M, Minv, m0, k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup){
 
       if(k != 0){
         par00<-rep(c(1,0,0,1),k)
@@ -297,13 +299,13 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
           #upper<-upper[1:(4*k-2)]
         }
 
-        if(tr_nonneg){
+        if(y_nonneg){
           par00<-c(par00,1, 0.001)
           #lower<-c(lower, -1, 0)
           #upper<-c(upper,  5, 10)
         }
         res    <-optim(par=par00,fn=NLL_sal, y=y,M=M,Minv=Minv,m0=m0,k=k,
-                       noconst_last=noconst_last,tr_nonneg=tr_nonneg,jackup=jackup)
+                       noconst_last=noconst_last,y_nonneg=y_nonneg,jackup=jackup)
         #method="L-BFGS-B",lower=lower,upper=upper)
         est0   <-res$par
         est    <-list(NULL)
@@ -318,7 +320,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
           }
         }
 
-        if(tr_nonneg){
+        if(y_nonneg){
           np_be      <- length(est0)
           bc_par     <- est0[(np_be-1):np_be]
           if(jackup) bc_par[2]  <- abs(bc_par[2])
@@ -328,18 +330,18 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
           bc_par<-NULL
         }
         res2  <-NLL_sal2(par=unlist(est), y=y, M=M, Minv=Minv, m0=m0,k=k,
-                         noconst_last=noconst_last, tr_nonneg=tr_nonneg,jackup=jackup)
+                         noconst_last=noconst_last, y_nonneg=y_nonneg,jackup=jackup)
         b     <-res2$b
         z     <-res2$z
         loglik<-res2$loglik
         comp  <-res2$comp
         y_ms  <-res2$y_ms
         z_ms  <-res2$z_ms
-        #if(tr_nonneg){
+        #if(y_nonneg){
         #  est <- est[1:(length(est)-2)]
         #}
 
-      } else if(tr_nonneg){
+      } else if(y_nonneg){
         #res   <-optimize(f=NLL_bc, interval=c(-5,5),y=y,M=M,Minv=Minv,m0=m0 )#c(-5,5)
         #bc_par<-res$minimum
         #est   <-NULL
@@ -414,6 +416,8 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
      } else {
        X0const <- as.matrix( as.matrix( xconst0 )[,mod$other$xf_id] )
      }
+   } else {
+     X0const   <- NULL
    }
 
   XX1_0	      <- list(NULL)
@@ -467,12 +471,12 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
         if( n0 == 1 ){
           n_ids <-(1:length(c(XX0_0)))[(1:length(c(XX0_0))) %in% mod$other$sel_basis_n[[ii]]]
           for( j in length(c(XX0_0)) ){
-            XX0_0[ j]<- ( XX0_0[ j] - mean(XX1_0[,j]) )/sd(XX1_0[,j])
+            XX0_0[ j]<- ( XX0_0[ j] - mean(XX1_0[,j]) )/sd(XX1_0[,j])### check
           }
         } else {
           n_ids <-(1:dim(XX0_0)[2])[(1:dim(XX0_0)[2]) %in% mod$other$sel_basis_n[[ii]]]
           for( j in  n_ids){
-            XX0_0[,j]<- ( XX0_0[,j] - mean(XX1_0[,j]) )/sd(XX1_0[,j])
+            XX0_0[,j]<- ( XX0_0[,j] - mean(XX1_0[,j]) )/sd(XX1_0[,j])### check
           }
         }
 
@@ -541,11 +545,11 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
 
        if( n0 == 1 ){
          for( j in 1:length(XX0const_0)){
-           XX0const_0[ j]<- ( XX0const_0[ j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])
+           XX0const_0[ j]<- ( XX0const_0[ j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])### check
          }
        } else {
          for( j in 1:dim(XX0const_0)[2]){
-           XX0const_0[,j]<- ( XX0const_0[,j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])
+           XX0const_0[,j]<- ( XX0const_0[,j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])### check
          }
        }
 
@@ -736,7 +740,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
     sf_pred <- b_vc[,1]
   }
 
-  if( is.null(xconst0)){
+  if( is.null( xconst0 ) ){
     xb_const  <- 0
   } else {
     if( !is.null( mod$c_vc ) ){
@@ -774,13 +778,14 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
 
     	y0         <- mod$other$y
     	tr_num     <- mod$other$tr_num
-    	tr_nonneg  <- mod$other$tr_nonneg
+    	y_nonneg   <- mod$other$y_nonneg
+    	y_type     <- mod$other$y_type
     	tr_par     <- mod$tr_par
     	tr_bpar    <- mod$tr_bpar$Estimate
     	y_added    <- mod$other$y_added
     	jackup     <- mod$other$jackup
     	noconst_last<-TRUE
-    	if( tr_num > 0 ){######## transfer this part to prediction functions
+    	if( tr_num > 0 ){
     	  z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,jackup=jackup)
     	  z_ms     <- z0$z_ms
     	  y_ms     <- z0$y_ms
@@ -788,36 +793,52 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
     	  dif      <- 1/d_sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup)
     	  pred     <- i_sal_k(par=tr_par,y=pred0,k=tr_num,noconst_last=noconst_last,
     	                      bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
-    	  if( tr_nonneg ) pred[ pred < 0 ] <- 0
+    	  if( y_nonneg ) pred[ pred < 0 ] <- 0
+    	  if( y_type=="count" ){
+    	    pred <- exp( pred )
+    	    if( !is.null( mod$other$offset ) ){
+    	      if( is.null( offset0 ) ) stop( "offset0 is missing" )
+    	      pred <- pred * offset0
+    	    }
+    	  }
 
-    	} else if( tr_nonneg ){
+    	} else if( y_nonneg ){
     	  z0      <- bc(par=tr_bpar,y=y0,jackup=jackup)
-    	  z_ms    <- c(mean(z0),sd(z0))
-    	  y_ms     <- NULL
+    	  z_ms    <- NULL#c(mean(z0),sd(z0))
+    	  y_ms    <- NULL
 
-    	  dif      <- 1 / ( d_bc(par=tr_bpar,y=y0,jackup=jackup)/z_ms[2] )
-    	  pred0b   <- pred0*z_ms[2] + z_ms[1]
+    	  dif      <- 1 / ( d_bc(par=tr_bpar,y=y0,jackup=jackup) )#/z_ms[2]
+    	  pred0b   <- pred0#*z_ms[2] + z_ms[1]
     	  pred     <- i_bc(par=tr_bpar,y=pred0b,jackup=jackup) - y_added
+    	  pred[is.nan(pred)]<-0
     	  pred[ pred < 0 ] <- 0
+
     	} else {
     	  dif      <- 1
     	  z_ms     <- NULL
     	  y_ms     <- NULL
     	  pred     <- pred0
+    	  if( y_type=="count" ){
+    	    pred <- exp( pred )
+    	    if( !is.null( mod$other$offset ) ){
+    	      if( is.null( offset0 ) ) stop( "offset0 is missing" )
+    	      pred <- pred * offset0
+    	    }
+    	  }
     	}
 
-    	if( is.null(z_ms) ){
-    	  if( !is.null(xgroup0) ){
-    	    res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred, "group" = b_g )
+    	if( is.null( z_ms )&( y_nonneg==FALSE ) ){
+    	  if( !is.null( b_g ) ){
+    	    res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred, b_g )
     	  } else {
     	    res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred )
     	  }
 
     	} else {
-    	  if( !is.null(xgroup0) ){
-    	    res	<- data.frame( "pred" = pred, "pred_trans" = pred0, "xb" = xb, "sf_residual" = sf_pred, "group" = b_g )
+    	  if( !is.null( b_g ) ){
+    	    res	<- data.frame( "pred" = pred, "pred_transG" = pred0, "xb" = xb, "sf_residual" = sf_pred, b_g )
     	  } else {
-    	    res	<- data.frame( "pred" = pred, "pred_trans" = pred0, "xb" = xb, "sf_residual" = sf_pred )
+    	    res	<- data.frame( "pred" = pred, "pred_transG" = pred0, "xb" = xb, "sf_residual" = sf_pred )
     	  }
     	}
 
@@ -863,7 +884,154 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
     c_vc <- cse_vc <- ct_vc <- cp_vc <- NULL
   }
 
-  result	<- list( pred = res, b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc,
+  pq_dat           <- NULL
+  if( compute_quantile ==TRUE ){
+    if( mod$other$y_type == "count" ){
+      message("Note: 'compute_quantile' is currently not supported for count data")
+    } else {
+      if( mod$other$is_weight ==TRUE ){
+        if( is.null( weight0 ) ) stop( "Specify weight0 to compute quantile" )
+      } else {
+        weight0     <- NULL
+      }
+
+      if( is.null( res ) ){
+        stop( "x0 and/or xconst0 are missing. They are required to compute quantile" )
+      }
+
+      B_covs  <-mod$other$B_covs
+      #B_covs_id<-colSums(B_covs0) - diag(B_covs0)
+      #B_covs   <-B_covs0[ B_covs_id != 0 , B_covs_id != 0 ]
+
+      sig   <-mod$other$sig
+      XX	<- as.matrix( cbind( 1, X0const, X0 ) )
+
+      #########SVC
+      for( i in 1:nsv ){
+        evSqrts    <-mod$other$evSqrts[[ i ]]
+        if(length( evSqrts ) == 1) evSqrts <- NULL
+
+        if( !is.null( evSqrts ) ){
+          if( i == 1 ) {
+            XX<- cbind( XX, meig0$sf )
+          } else {
+            XX<- cbind( XX, X0[ , i-1 ] * meig0$sf )
+          }
+        }
+      }
+
+      #########Group
+      if( !is.null( mod$b_g ) ){
+        for( ggid in 1:ng ){
+          skip_id     <-which(is.na(mod$b_g[[ggid]][,2]))
+          xg_levels   <- mod$other$xg_levels[[ggid]][ -skip_id]
+          Xg          <- matrix( 0, nrow =n0, ncol=length( xg_levels ) )
+          for( ggid2 in 1:length( xg_levels ) ) Xg[ ,ggid2 ][ xgroup0[, ggid ] == xg_levels[ ggid2 ] ]<-1
+          XX  <-cbind(XX, Xg)
+        }
+      }
+
+      #########NVConst
+      if( !is.null( mod$c_vc ) ){
+        for( i in 1:nnxf ){
+          evSqrts_c<- mod$other$evSqrts_c[[ i ]]
+          if(length( evSqrts_c ) == 1) evSqrts_c <- NULL
+
+          if( length( mod$other$evSqrts_c[[ i ]] ) <= 1 ){
+          } else {
+            XX<- cbind( XX, X0const[ , i ] * B_c[[ i ]] )
+          }
+        }
+      }
+
+      #########NVC
+      if( !is.null( mod$other$evSqrts_n[[1]] ) ){
+        for( i in 1:nsv ){
+          if(i ==1){
+            evSqrts_n<- NULL
+          } else {
+            evSqrts_n<- mod$other$evSqrts_n[[ i ]]
+            if(length( evSqrts_n ) == 1) evSqrts_n <- NULL
+          }
+
+          if( !is.null( evSqrts_n ) ){
+            XX<- cbind( XX, X0[ , i-1 ] * B_n[[ i ]] )
+          }
+        }
+      }
+
+      if( is.null( weight0 ) ){
+        weight0  <- 1
+      } else {
+        weight0  <- weight0*mod$other$w_scale
+      }
+
+      pred0_se<- sqrt( colSums( t( sqrt(weight0)*XX ) * ( B_covs %*% t( sqrt(weight0)*XX ) ) ) + sig )
+      pred0_se<- pred0_se/sqrt( weight0 )
+      if( sum(names(res) %in% "pred_transG") == 0 ){
+        res_name<-names( res )
+        res   <- data.frame( res[,1], pred_se = pred0_se, res[,-1] )
+        names( res ) <- c( res_name[1], "pred_se", res_name[-1] )
+      } else {
+        res_name<-names( res )
+        res   <- data.frame( res[,1:2], pred_se = pred0_se, res[,-c(1:2)] )
+        names( res ) <- c( res_name[1:2], "pred_transG_se", res_name[-c(1:2)] )
+
+      }
+
+      pquant  <- c(0.01, 0.025, 0.05, seq(0.1,0.9,0.1), 0.95, 0.975, 0.99)
+      pq_dat0 <- NULL
+      for(pq in pquant){
+        pq_dat0<-cbind(pq_dat0,qnorm(pq,pred0,pred0_se))
+      }
+      pq_dat0       <- as.data.frame(pq_dat0)
+      names(pq_dat0)<- paste("q",pquant,sep="")
+
+      if( tr_num > 0 ){######## transfer this part to prediction functions
+        tr_bpar0 <-tr_bpar
+        z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,
+                          bc_par=tr_bpar0,jackup=jackup)
+        z_ms     <- z0$z_ms
+        y_ms     <- z0$y_ms
+        pq_dat   <- pq_dat0
+        for(pq in 1:ncol( pq_dat0 ) ){
+          ptest<-try(pq_pred<- i_sal_k( par=tr_par,y=pq_dat0[,pq],k=tr_num,noconst_last=noconst_last,
+                                        bc_par=tr_bpar0,y_ms=y_ms,z_ms=z_ms,jackup=jackup ) - y_added )
+          if(class(ptest)!="try-error"){
+            pq_dat[,pq]       <-pq_pred
+          } else {
+            pq_dat[,pq]       <-NA
+          }
+        }
+
+      } else if( y_nonneg ==TRUE ){
+        y        <- bc(par=tr_bpar,y=y0,jackup=jackup)
+        pred     <- i_bc(par=tr_bpar,y=pred0,jackup=jackup) - y_added
+        pred[ is.nan( pred ) ]<- 0
+        pred[ pred < 0 ]      <- 0
+
+        pq_dat   <- pq_dat0
+        for(pq in 1:ncol(pq_dat0)){
+          ptest<-try(pq_pred<- i_bc(par=tr_bpar,y=pq_dat0[,pq],jackup=jackup) - y_added)
+          if(class(ptest)!="try-error"){
+            pq_pred[is.nan(pq_pred)&(pq_dat0[,pq] < 0)]<-0
+            pq_pred[pq_pred <0]<-0
+            pq_dat[,pq]       <-pq_pred
+          } else {
+            pq_dat[,pq]       <-NA
+          }
+        }
+
+      } else {
+        pq_dat   <- pq_dat0
+      }
+    }
+  }
+
+
+
+  result	<- list( pred = res, pred_quantile=pq_dat,
+                  b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc,
                   c_vc = c_vc, cse_vc = cse_vc, ct_vc = ct_vc, cp_vc = cp_vc )
 
  return( result )

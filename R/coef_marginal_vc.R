@@ -3,7 +3,7 @@ coef_marginal_vc  <- function( mod ){
   if(class( mod ) !="resf_vc" ) stop("Error: The model is not an output from the resf_vc fucntion")
 
   #if( class( mod )== "resf_vc" ){
-    n     <-dim(mod$other$coords)[1]
+    n     <- length( mod$other$y )
     dif   <- mod$other$dif
 
     b_vc2 <- mod$b_vc * mod$other$dif
@@ -53,15 +53,15 @@ print.coef_marginal_vc <- function(x, ...)
   cat("Call:\n")
   print(x$call)
 
-  cat("\n----Marginal effects from x (dx_i/dy_i) (summary)----\n")
+  cat("\n----Marginal effects from x (dy_i/dx_i) (summary)----\n")
   print( summary( x$b_vc ) )
 
   if( is.null(x$other) & !is.null(x$c) ){
-    cat("\n----Marginal effects from xconst (dx_i/dy_i)(summary)----\n")
+    cat("\n----Marginal effects from xconst (dy_i/dx_i)(summary)----\n")
     print( summary( x$c ) )
 
   } else if( !is.null(x$c_vc) ){
-    cat("\n----Marginal effects from xconst (dx_i/dy_i)(summary)----\n")
+    cat("\n----Marginal effects from xconst (dy_i/dx_i)(summary)----\n")
     print( summary( x$c_vc ) )
   }
   cat("\n Note: Medians are recommended summary statistics\n")

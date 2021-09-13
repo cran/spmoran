@@ -1,8 +1,9 @@
 \name{predict0_vc}
 \alias{predict0_vc}
-\title{Prediction of explained variables and spatially varying coefficients}
+\title{Spatial predictions for explained variables and spatially varying coefficients}
 \usage{
-predict0_vc( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL )
+predict0_vc( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
+             offset0 = NULL, weight0 = NULL, compute_quantile = FALSE )
 }
 \description{
 This function predicts explained variables and spatially and non-spatially varying coefficients. The Nystrom extension is used to perform a prediction minimizing the expected prediction error
@@ -13,6 +14,9 @@ This function predicts explained variables and spatially and non-spatially varyi
 \item{x0}{Matrix of explanatory variables at predicted sites whose coefficients are allowed to vary across geographical space (N_0 x K). Default is NULL}
 \item{xgroup0}{Matrix of group indeces that may be group IDs (integers) or group names (N_0 x K_{group}). Default is NULL}
 \item{xconst0}{Matrix of explanatory variables at predicted sites whose coefficients are assumed constant (or NVC) across space (N_0 x K_const). Default is NULL}
+\item{offset0}{Vector of offset variables at predicted sites (N x 1). Available if y is count (see \code{\link{nongauss_y}}). Default is NULL}
+\item{weight0}{Vector of weights for predicted sites (N_0 x 1). Required if compute_quantile = TRUE}
+\item{compute_quantile}{If TRUE, Matrix of the quantiles for the predicted values (N x 15) is evaulated. Default is FALSE}
 }
 \value{
 \item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (i.e., component explained by x0 and xconst0) (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group) If tr_num > 0 or tr_nonneg ==TRUE (i.e., y is transformed) in \code{\link{resf_vc}}, another column including the predicted values in the transformed/normalized scale (pred_trans) is inserted into the second column}

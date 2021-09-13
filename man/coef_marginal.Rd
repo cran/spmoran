@@ -5,13 +5,13 @@
 coef_marginal( mod )
 }
 \description{
-This function evaluates the marginal effects of x based on the estimation result of \code{\link{resf}}. This funtion works if y is transformed  (i.e., tr_num > 0 or tr_nonneg =TRUE) in \code{\link{resf}}.
+This function evaluates the marginal effects from x (dy/dx) based on the estimation result of \code{\link{resf}}. This funtion is for non-Gaussian models transforming y using \code{\link{nongauss_y}}.
 }
 \arguments{
 \item{mod}{Output from \code{\link{resf}}}
 }
 \value{
-\item{b}{Marginal effects of x}
+\item{b}{Marginal effects from x (dy/dx)}
 }
 \seealso{
 \code{\link{resf}}

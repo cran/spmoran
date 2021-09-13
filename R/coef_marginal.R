@@ -2,7 +2,7 @@ coef_marginal  <- function( mod ){
 
   if(class( mod ) !="resf" ) stop("Error: The model is not an output from the resf fucntion")
 
-  n     <-dim(mod$other$coords)[1]
+  n     <- length( mod$other$y )
   dif   <- mod$other$dif
 
   if( dim(mod$b)[1] > 1 ){
@@ -36,7 +36,7 @@ print.coef_marginal <- function(x, ...)
 {
   cat("Call:\n")
   print(x$call)
-  cat("\n----Marginal effects from x (dx_i/dy_i) (summary)-------\n")
+  cat("\n----Marginal effects from x (dy_i/dx_i) (summary)-------\n")
   bb<- x$b
   print( summary( bb ) )
   cat("\n Note: Medians are recommended summary statistics\n")

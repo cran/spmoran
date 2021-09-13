@@ -11,7 +11,7 @@ This function performs a fast approximation of Moran eigenvectors and eigenvalue
 \item{coords}{Matrix of spatial point coordinates (N x 2)}
 \item{model}{Type of kernel to model spatial dependence. The currently available options are "exp" for the exponential kernel, "gau" for the Gaussian kernel, and "sph" for the spherical kernel. Default is "exp"}
 \item{enum}{Number of eigenvectors and eigenvalues to be extracted (scalar). Default is 200}
-\item{s_id}{Optional. ID specifying groups modeling spatial effects (N x 1). If specified, Moran eigenvectors are extracted by groups. It is useful e.g. for multilevel modeling (s_id is the groups) and panel data modeling (s_id is given by individual location id). Default is NULL}
+\item{s_id}{Optional. Location/zone ID for modeling spatial effects across groups. If specified, Moran eigenvectors are extracted by groups. It is useful e.g. for multilevel modeling (s_id is the groups) and panel data modeling (s_id is given by individual location id). Default is NULL}
 }
 \details{
 This function extracts approximated Moran eigenvectors from MCM. M = I - 11'/N is a centering operator, and C is a spatial connectivity matrix whose (i, j)-th element is given by exp( -d(i,j)/h), where d(i,j) is the Euclidean distance between the sample sites i and j, and h is a range parameter given by the maximum length of the minimum spanning tree connecting sample sites (see Dray et al., 2006).
