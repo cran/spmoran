@@ -1,4 +1,4 @@
-43de7af32f9317406ef78861026f3630 *DESCRIPTION
+8b9f0b133720ae66e2de00c61427ec55 *DESCRIPTION
 f59403d01ed4b35ac8661c82c8b0172f *NAMESPACE
 1df066154840c6af739d6a337c3f038e *R/besf.R
 d022e66588f74f4ca18d507957b3168b *R/besf_vc.R
@@ -10,7 +10,7 @@ bcd64b5f723564cadda77b43b2ba5cc0 *R/esf.R
 a63bed1e95954752c3f38a944df6dd9e *R/meigen.R
 14e55b538e71af4534d9686db3294608 *R/meigen0.R
 104d1d2ae05fed17f376376768b02a1e *R/meigen_f.R
-2eb10bf2e368006f9771bd61d46310ae *R/nongauss_y.R
+5bd85d4abc76a1454f64f1ed9ac15f11 *R/nongauss_y.R
 392979d2b9914e04b4e510bc0ff73864 *R/plot_n.R
 e0d87d2075346bb031ce0f885ae77944 *R/plot_qr.R
 9e9b1d96cbdbd09c8d32c585a7ed1b5a *R/plot_s.R
@@ -18,9 +18,9 @@ e0d87d2075346bb031ce0f885ae77944 *R/plot_qr.R
 92d5c766f68c3c041ddcfeb7098e8d35 *R/predict0_vc.R
 88280b564bdf5e47152fefd108d3bccd *R/resf.R
 e3a56aea1b29bbe46bcc23262231371d *R/resf_qr.R
-60317b14829306c2240cd0e4e07cc627 *R/resf_vc.R
+8cdd6a8c48e4f3b2348d2f0d72c5add3 *R/resf_vc.R
 12de1e8fcd2b32ad0313374b4a44324d *R/weigen.R
-169eb30a49a29f6070f1b310ebde0cf7 *build/vignette.rds
+32a1e5eac0eef2b32c9a53644ad8c84b *build/vignette.rds
 7bc8aa1840e57ce0f8a85ae13c6fb6d3 *inst/doc/boston_sample.pdf
 54dbdd360b4bba24e7a4868d167ee42f *inst/doc/boston_sample.pdf.asis
 31c9373ae0c606d6aea87665ab7d478a *inst/doc/vignette_spmoran_nongaussian.pdf

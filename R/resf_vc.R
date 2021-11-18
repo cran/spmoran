@@ -1727,6 +1727,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   b<- b0<- MMinv %*% mm
   b[ -( 1:nx ) ]	<- b[ -( 1:nx ) ] * eevSqrt
 
+  X3      <- X
+  X3[, null_dum3 ][,-( 1:nx )]<- t(t(X[, null_dum3 ][,-( 1:nx )])* eevSqrt)
+
   nxx     <- nx
   if( !is.null( weight ) ){
     pred0	  <- X_org[ , null_dum3 ] %*% b
@@ -1745,13 +1748,13 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     b_cov2  <- b_cov[ b!=0, b!=0 ]
 
     if( y_type == "continuous"){
-      pred0_se<- sqrt( colSums( t( X[ , null_dum3 ][ ,b!=0 ] ) *
-                                  ( b_cov2 %*% t( X[ , null_dum3 ][ ,b!=0 ] ) ) )  + sig )
+      pred0_se<- sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
+                                  ( b_cov2 %*% t( X3[ , null_dum3 ][ ,b!=0 ] ) ) )  + sig )
       pred0_se<- pred0_se / sqrt( weight )
 
     } else if( y_type == "count"){
-      pred0_se<- sqrt( colSums( t( X[ , null_dum3 ][ ,b!=0 ] ) *
-                                  ( b_cov2 %*% t( X[ , null_dum3 ][ ,b!=0 ] ) ) )  + sig )
+      pred0_se<- sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
+                                  ( b_cov2 %*% t( X3[ , null_dum3 ][ ,b!=0 ] ) ) )  + sig )
       pred0_se<- pred0_se / sqrt( weight0 )
     }
 
@@ -1763,8 +1766,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     sig		  <- sig_org <- SSE /( n - nxx )
     b_cov		<- sig * MMinv
     b_cov2  <- b_cov[ b!=0, b!=0 ]
-    pred0_se<- sqrt( colSums( t( X[ , null_dum3 ][, b!=0 ] ) *
-                                ( b_cov2 %*% t( X[ , null_dum3 ][, b!=0 ] ) ) ) + sig )
+    pred0_se<- sqrt( colSums( t( X3[ , null_dum3 ][, b!=0 ] ) *
+                                ( b_cov2 %*% t( X3[ , null_dum3 ][, b!=0 ] ) ) ) + sig )
   }
 
   bse		  <- sqrt( diag( b_cov ) )
@@ -2364,8 +2367,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       dif      <-dif*pred[,1]######check !!( y_origin + 0.5 )
   }
 
-  pred[is.nan(pred[,1]),1]<-0
-  for(qq in 1:ncol(pq_dat)) pq_dat[is.nan(pq_dat[,qq]),qq]<-0
+  #pred[is.nan(pred[,1]),1]<-0
+  #for(qq in 1:ncol(pq_dat)) pq_dat[is.nan(pq_dat[,qq]),qq]<-0
 
   if( y_type=="continuous" ){
     e_stat		 <- data.frame( stat = c( sqrt( sig_org ), r2, loglik, AIC, BIC ) )
