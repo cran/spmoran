@@ -6,8 +6,7 @@
 resf_vc(y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = NULL,
         x_nvc = FALSE, xconst_nvc = FALSE, x_sel = TRUE, x_nvc_sel = TRUE,
         xconst_nvc_sel = TRUE, nvc_num = 5, meig, method = "reml",
-        penalty = "bic", maxiter = 30, nongauss = NULL,
-        tr_nonneg = NULL, tr_num = NULL )
+        penalty = "bic", maxiter = 30, nongauss = NULL )
 }
 \description{
 This model estimates regression coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), group effects, and residual spatial dependence. The random-effects eigenvector spatial filtering, which is an approximate Gaussian process approach, is used for modeling the spatial process in coefficients and residuals. While the resf_vc function estimates a SVC model by default, the type of coefficients (constant, SVC, NVC, or SNVC) can be selected through a BIC/AIC minimization. This function is available for modeling Gaussian and non-Gaussian data including continuous and count data (see \code{\link{nongauss_y}}).
@@ -32,8 +31,6 @@ Note that SNVCs can be mapped just like SVCs. SNVC model is more robust against 
 \item{penalty}{Penalty to select varying coefficients and stablize the estimates. The current options are "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion  (2K). Default is "bic"}
 \item{maxiter}{Maximum number of iterations. Default is 30}
 \item{nongauss}{Parameter setup for modeling non-Gaussian continuous and count data. Output from \code{\link{nongauss_y}}}
-\item{tr_nonneg}{Deprecated. Use the nongauss function}
-\item{tr_num}{Deprecated. Use the nongauss function}
 }
 \details{
 This function estimates Gaussian and non-Gaussian spatial model for continuous and count data. For non-Gaussian modeling, see \code{\link{nongauss_y}}.

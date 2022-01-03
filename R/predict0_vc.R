@@ -218,165 +218,11 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
       loglik<- ee/2 - comp
       return(list(z=z, b=b, loglik=loglik,comp=comp,z_ms=z_ms))#
     }
-
-    lik_resf_vc_tr <- function( par, k, y_nonneg=FALSE,noconst_last=TRUE, X,
-                                evSqrt, y0, n, nx, emet,M0,Minv,term1,null_dum3=NULL,jackup ){
-      tr_par       <- par
-      if(k > 0){
-        tr_par2<-list(NULL)
-        for(kk in 1:k){
-          if(noconst_last & (kk==k)){
-            tr_par2[[kk]]        <- tr_par[(4*(kk-1)+1):(4*(kk-1)+2)]
-            tr_par2[[kk]][1]     <- abs(tr_par2[[kk]][1])
-          } else {
-            tr_par2[[kk]]        <- tr_par[(4*(kk-1)+1):(4*(kk-1)+4)]
-            tr_par2[[kk]][c(1,4)]<- abs(tr_par2[[kk]][c(1,4)])
-          }
-        }
-
-        if(y_nonneg){
-          np_b  <-length(tr_par)
-          bc_par<-tr_par[(np_b-1):np_b]
-          #if(bc_par[1] < -0.5) bc_par[1] <- -0.5###################### added 2020/12/14
-          bc_par[2]<-abs(bc_par[2])
-        } else {
-          bc_par<-NULL
-        }
-        z0      <- sal_k(par=tr_par2,y=y0,k=k,noconst_last=noconst_last,bc_par=bc_par,jackup=jackup)
-        z       <- z0$y
-        z_ms    <- z0$z_ms
-        y_ms    <- z0$y_ms
-        d_abs   <- abs( d_sal_k( par=tr_par2 ,y=y0, k=k,noconst_last=noconst_last,
-                                 bc_par=bc_par,y_ms=y_ms,z_ms=z_ms,jackup=jackup ) )
-        comp    <- (-2)*sum( log( d_abs ))
-
-        if(max(abs(z_ms)) > 10^10){######### deleted
-          comp  <- 10^100
-        }
-
-      } else if(y_nonneg){
-        z0      <- bc(par=tr_par,y=y0,jackup=jackup)
-        z_ms    <- c(mean(z0),sd(z0))
-        z       <- (z0-z_ms[1])/z_ms[2]
-        d_abs   <- abs( d_bc(par=tr_par,y0,jackup=jackup)*d_sc(par=z_ms,y0) )
-        comp    <- (-2)*sum( log( d_abs ) )
-      } else {
-        z       <- y0
-        comp    <- 0
-      }
-
-      m	        <- crossprod( X[,null_dum3], z )
-      zz        <- sum( z^2 )
-
-      ########################## reml
-      m[-(1:nx)]		<- m[ -( 1:nx ) ] * evSqrt[null_dum3[-( 1:nx )]]
-      b		<- Minv %*% m
-      sse		<- zz - 2 * t( b ) %*% m + t( b ) %*% M0 %*% b
-      dd		<- abs(sse) + sum( b[ -( 1:nx ) ] ^ 2 )
-      if( emet == "reml" ){
-        term2	<- ( n - nx ) * ( 1 + log( 2 * pi * dd / ( n - nx ) ) )
-      } else if( emet == "ml" ){
-        term2	<- n * ( 1 + log( 2 * pi * dd / n ) )
-      }
-      loglik		<- term1 + term2 + comp
-
-      if(is.nan(loglik)) loglik <-10^100
-      if(is.na(loglik))  loglik <-10^100
-
-      return( loglik[ 1 ] )
-    }
-
-    lm_cw<-function(y, M, Minv, m0, k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup){
-
-      if(k != 0){
-        par00<-rep(c(1,0,0,1),k)
-        #lower<-rep(c(1e-10,-3,-Inf,1e-10),k)###### check!!!
-        #upper<-rep(c(Inf, 3, Inf, Inf),k)
-
-        if(noconst_last){
-          par00<-par00[1:(4*k-2)]
-          #lower<-lower[1:(4*k-2)]
-          #upper<-upper[1:(4*k-2)]
-        }
-
-        if(y_nonneg){
-          par00<-c(par00,1, 0.001)
-          #lower<-c(lower, -1, 0)
-          #upper<-c(upper,  5, 10)
-        }
-        res    <-optim(par=par00,fn=NLL_sal, y=y,M=M,Minv=Minv,m0=m0,k=k,
-                       noconst_last=noconst_last,y_nonneg=y_nonneg,jackup=jackup)
-        #method="L-BFGS-B",lower=lower,upper=upper)
-        est0   <-res$par
-        est    <-list(NULL)
-        for(kk in 1:k){
-          if(noconst_last & (kk==k)){
-            est0[(4*(kk-1)+1)]<- abs( est0[(4*(kk-1)+1)] )
-            est[[kk]]    <- est0[(4*(kk-1)+1):(4*(kk-1)+2)]
-          } else {
-            est0[(4*(kk-1)+1)]<- abs( est0[(4*(kk-1)+1)] )
-            est0[(4*(kk-1)+4)]<- abs( est0[(4*(kk-1)+4)] )
-            est[[kk]]    <- est0[(4*(kk-1)+1):(4*(kk-1)+4)]
-          }
-        }
-
-        if(y_nonneg){
-          np_be      <- length(est0)
-          bc_par     <- est0[(np_be-1):np_be]
-          if(jackup) bc_par[2]  <- abs(bc_par[2])
-          #bc_par     <- est0[length(est0)]
-          est[[kk+1]]<- bc_par
-        } else {
-          bc_par<-NULL
-        }
-        res2  <-NLL_sal2(par=unlist(est), y=y, M=M, Minv=Minv, m0=m0,k=k,
-                         noconst_last=noconst_last, y_nonneg=y_nonneg,jackup=jackup)
-        b     <-res2$b
-        z     <-res2$z
-        loglik<-res2$loglik
-        comp  <-res2$comp
-        y_ms  <-res2$y_ms
-        z_ms  <-res2$z_ms
-        #if(y_nonneg){
-        #  est <- est[1:(length(est)-2)]
-        #}
-
-      } else if(y_nonneg){
-        #res   <-optimize(f=NLL_bc, interval=c(-5,5),y=y,M=M,Minv=Minv,m0=m0 )#c(-5,5)
-        #bc_par<-res$minimum
-        #est   <-NULL
-
-        res   <-optim(par=c(1,0.001),fn=NLL_bc,y=y,M=M,Minv=Minv,m0=m0,jackup=jackup )# interval=c(-5,5)
-        bc_par<-res$par
-        bc_par[2]<-abs(bc_par[2])
-        est   <-NULL
-
-        res2  <-NLL_bc2(par=bc_par, y=y, M=M, Minv=Minv, m0=m0,jackup=jackup )
-        b     <-res2$b
-        z     <-res2$z
-        loglik<-res2$loglik
-        comp  <-res2$comp
-        y_ms  <-NULL
-        z_ms  <-res2$z_ms# this part is different from Kaihatsuchushi
-
-      } else {
-        est    <- NULL
-        res2   <- NULL
-        b      <- NULL
-        z      <- y
-        loglik <- NULL
-        comp   <- 0
-        bc_par <- NULL
-        y_ms  <-NULL
-        z_ms  <-NULL
-      }
-
-      return(list(vpar=est,bc_par=bc_par,b=b,z=z,loglik=loglik,comp=comp,
-                  y_ms=y_ms,z_ms=z_ms))
-    }
   }
 
-  n<-length(mod$other$coords[,1])
+  n        <- length(mod$other$coords[,1])
+  nx       <- mod$other$nx
+  eevSqrt  <- mod$other$eevSqrt
   if( ( length(mod$other$evSqrts_n)==1 )&( is.null(mod$other$evSqrt_n[[1]]))&(length(mod$other$evSqrts) > 1 )){
     mod$other$evSqrts_n <-list(NULL)
     for(pp in 2:length(mod$other$evSqrts)){
@@ -966,7 +812,9 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
         weight0  <- weight0*mod$other$w_scale
       }
 
-      pred0_se<- sqrt( colSums( t( sqrt(weight0)*XX ) * ( B_covs %*% t( sqrt(weight0)*XX ) ) ) + sig )
+      X3            <- XX
+      X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* eevSqrt[eevSqrt > 0])
+      pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( B_covs %*% t( sqrt(weight0)*X3 ) ) ) + sig )
       pred0_se<- pred0_se/sqrt( weight0 )
       if( sum(names(res) %in% "pred_transG") == 0 ){
         res_name<-names( res )
@@ -1030,7 +878,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
 
 
 
-  result	<- list( pred = res, pred_quantile=pq_dat,
+  result	<- list( pred = res, pred_quantile=pq_dat,#XX=XX,
                   b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc,
                   c_vc = c_vc, cse_vc = cse_vc, ct_vc = ct_vc, cp_vc = cp_vc )
 

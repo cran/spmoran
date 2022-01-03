@@ -1,14 +1,13 @@
 
 resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
                     nvc = FALSE, nvc_sel = TRUE, nvc_num = 5, meig,
-                    method = "reml", penalty = "bic", nongauss = NULL,
-                    tr_nonneg = NULL, tr_num = NULL ){
+                    method = "reml", penalty = "bic", nongauss = NULL ){
 
   res   <- resf_vc( y = y, xconst = x, xgroup = xgroup, weight = weight, offset = offset,
                     x = NULL, x_sel = FALSE, x_nvc = FALSE, x_nvc_sel = FALSE,
                     xconst_nvc = nvc, xconst_nvc_sel = nvc_sel,nvc_num = nvc_num,
                     meig = meig, method = method, penalty = penalty, maxiter = 30,
-                    nongauss = nongauss, tr_nonneg = tr_nonneg, tr_num = tr_nonneg )
+                    nongauss = nongauss )
 
   b     <- res$c
   b_g   <- res$b_g
@@ -55,10 +54,11 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
   B_covs    <- res$other$B_covs
   sig       <- res$other$sig
   is_weight <- res$other$is_weight
+  eevSqrt   <- res$other$eevSqrt
 
   other	  <- list( sf_alpha= sf_alpha, x_id = x_id, model = "resf", par0 = par0, nx = nx, df = df, bias=bias, res=res,
                    x = res$other$xconst, coords = meig$other$coords, dif=res$other$dif,method=method,
-                   tr_num = tr_num, y_nonneg = y_nonneg, y_added = y_added, y_type = y_type,
+                   tr_num = tr_num, y_nonneg = y_nonneg, y_added = y_added, y_type = y_type,eevSqrt = eevSqrt,
                    xg_levels = xg_levels, is_weight = is_weight, B_covs = B_covs, sig = sig,
                    y = y0, jackup=jackup, offset=offset, e_NULL = e_NULL, w_scale = w_scale )
 
