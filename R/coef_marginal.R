@@ -1,6 +1,7 @@
 coef_marginal  <- function( mod ){
 
-  if(class( mod ) !="resf" ) stop("Error: The model is not an output from the resf fucntion")
+  #if(class( mod ) !="resf" ) stop("Error: The model is not an output from the resf fucntion")
+  if( !inherits( mod, "resf" ) ) stop("Error: The model is not an output from the resf fucntion")
 
   n     <- length( mod$other$y )
   dif   <- mod$other$dif

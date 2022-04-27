@@ -39,7 +39,7 @@ lslm	<-function( y, x, weig, method = "reml", boot = FALSE, iter = 200 ){
     m1		<- Xy + V_XE %*% Ey
     m2		<- t( t( Ey ) * V_E_diag )
     m		<- c( m0, m1, m2 )
-    if( class( test )[ 1 ] == "try-error" ){
+    if( inherits(test, "try-error" ) ){#class( test )[ 1 ] == "try-error"
     	loglik  <- Inf
     } else {
     	b	<- Minv %*% m

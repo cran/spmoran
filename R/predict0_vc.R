@@ -1,7 +1,8 @@
 predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
                          offset0 = NULL, weight0 = NULL, compute_quantile = FALSE ){
 
-  if(class( mod ) !="resf_vc" ) stop("Error: The model is not an output from the resf_vc fucntion")
+  #if(class( mod ) !="resf_vc" ) stop("Error: The model is not an output from the resf_vc fucntion")
+  if( !inherits( mod, "resf_vc") ) stop("Error: The model is not an output from the resf_vc fucntion")
 
   {
     af <-function(par,y) par[1]+par[2]*y
@@ -300,7 +301,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
           kkk       <- np_xx[ ii ]-iiii
           knots     <- seq(min( X1_nvc[ , ii ] ),max( X1_nvc[ , ii ] ),len=kkk+2)[2:(kkk+1)]
           testt     <- try(XX1_00    <- ns( X1_nvc[ ,ii ], knots = knots ), silent=TRUE)#replaced
-          test      <- class(testt)[1] == "try-error"
+          test      <- inherits( testt, "try-error")#class(testt)[1] == "try-error"
           iiii      <- iiii+1
         }
 
@@ -369,7 +370,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
          kkk      <- np_xxconst[ ii ]-iiii
          knots    <-seq(min( X1const_nvc[ ,ii ] ),max( X1const_nvc[ ,ii ] ),len=kkk+2)[2:(kkk+1)]
          testt<- try(XX1const_00<- ns( X1const_nvc[ , ii], knots = knots ), silent=TRUE)
-         test <- class(testt)[1] == "try-error"
+         test <- inherits( testt, "try-error")#class(testt)[1] == "try-error"
          iiii <- iiii+1
        }
 
@@ -845,7 +846,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
         for(pq in 1:ncol( pq_dat0 ) ){
           ptest<-try(pq_pred<- i_sal_k( par=tr_par,y=pq_dat0[,pq],k=tr_num,noconst_last=noconst_last,
                                         bc_par=tr_bpar0,y_ms=y_ms,z_ms=z_ms,jackup=jackup ) - y_added )
-          if(class(ptest)!="try-error"){
+          if( !inherits(ptest, "try-error")){#class(ptest)!="try-error"
             pq_dat[,pq]       <-pq_pred
           } else {
             pq_dat[,pq]       <-NA
@@ -861,7 +862,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
         pq_dat   <- pq_dat0
         for(pq in 1:ncol(pq_dat0)){
           ptest<-try(pq_pred<- i_bc(par=tr_bpar,y=pq_dat0[,pq],jackup=jackup) - y_added)
-          if(class(ptest)!="try-error"){
+          if( !inherits(ptest, "try-error") ){#class(ptest)!="try-error"
             pq_pred[is.nan(pq_pred)&(pq_dat0[,pq] < 0)]<-0
             pq_pred[pq_pred <0]<-0
             pq_dat[,pq]       <-pq_pred

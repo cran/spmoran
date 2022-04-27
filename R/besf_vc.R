@@ -53,7 +53,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
       suppressWarnings(cor_test0<-cor(test0))
       testt2<-try(vif <- diag(solve(cor_test0)), silent=TRUE)
       #testt2<-try(vif <- diag(solve(cor(test0))), silent=TRUE)
-      if( class(testt2)=="try-error" ){
+      if( inherits(testt2, "try-error") ){#class(testt2)=="try-error"
         suppressWarnings(corr_0<-cor(test0))
         #corr_0   <- cor(test0)
         diag(corr_0)<- 0
@@ -193,7 +193,8 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
 
     m[-(1:nx)]		<- m[ -( 1:nx ) ] * evSqrt
     test			<-try(Minv	<- solve( M, tol = 1e-30 ))
-    if(class(test)[1]=="try-error"){
+    #if(class(test)[1]=="try-error"){
+    if( inherits(test,"try-error") ){
       loglik  	<- Inf
     } else {
       b		<- Minv %*% m
@@ -312,7 +313,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
         #} else {
         testt<-try(XX1_00<- ns( X1_nvc[ ,ii ], knots = knots ), silent=TRUE)
         #}
-        test <- class(testt)[1] == "try-error"
+        test <- inherits(testt, "try-error")#class(testt)[1] == "try-error"
         iiii <- iiii+1
       }
 
@@ -322,7 +323,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
       testt2<-try(XX1_00     <- sel_basis_vif( cbind( X1_nvc[,ii], XX1_00), vif_max=15),silent=TRUE )
       #}
 
-      if(class(testt2)[1] != "try-error" ){
+      if( !inherits( testt2, "try-error" ) ){#class(testt2)[1] != "try-error"
         np_xx[ ii ]   <- dim(XX1_00)[2]
       } else {
         np_xx[ ii ]   <- 0
@@ -364,7 +365,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
         #} else {
         testt<-try(XXconst_00<- ns( Xconst_nvc[ ,ii ], knots = knots ), silent=TRUE)
         #}
-        test <- class(testt)[1] == "try-error"
+        test <- inherits(testt, "try-error")#class(testt)[1] == "try-error"
         iiii <- iiii+1
       }
 
@@ -374,7 +375,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
       testt2<-try(XXconst_00     <- sel_basis_vif( cbind( Xconst_nvc[,ii], XXconst_00 ), vif_max=15),silent=TRUE)
       #}
 
-      if(class(testt2)[1] != "try-error"){
+      if( !inherits(testt2, "try-error") ){#class(testt2)[1] != "try-error"
         np_xxconst[ ii ]  <- dim(XXconst_00)[2]
       }else{
         np_xxconst[ ii ] <- 0
@@ -416,9 +417,9 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     #s_id_dat2<-merge(s_id_dat, s_id2, by="s_id", all.x=TRUE)
     #s_id_dat2<-s_id_dat2[order(s_id_dat2$id),c("s_id", "s_id_num")]
     enum    <- min( enum, length( coords_g ) - 1 )
-    coordk	<- kmeans( coords, centers = enum + 1 )$centers
+    suppressWarnings(coordk	<- kmeans( coords, centers = enum + 1 )$centers)
   } else {
-    coordk	<- kmeans( coords, centers = enum + 1 )$centers
+    suppressWarnings(coordk	<- kmeans( coords, centers = enum + 1 )$centers)
   }
 
   D	      <- rdist( coordk )
@@ -732,7 +733,8 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
           try1	<- try( M0inv	<- solve( MM0,  tol = 1e-30 ), silent = TRUE )
           try2	<- try( Mdet0	<- Mdet_f0( M = MM, M0 = MM0, id = idd,
                                          par0_sel = par0_sel, emet = method ), silent = TRUE)
-          er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
+          #er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
+          er_dum	<- inherits( try1, "try-error" )|inherits( try2, "try-error" )
 
           if( er_dum == TRUE ){
             M	  <- M [ id_omit1 == 0, id_omit1 == 0 ]

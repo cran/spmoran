@@ -27,7 +27,7 @@ lsem		<-function( y, x, weig, method = "reml" ){
     m1		<- Xy
     m2		<- t( t( Ey ) * V_E_diag )
     m		<- c( m0, m1, m2 )
-    if( class( test )[ 1 ] == "try-error" ){
+    if( inherits(test, "try-error") ){#class( test )[ 1 ] == "try-error"
       loglik  <- Inf
     } else {
       b	<- Minv %*% m

@@ -55,11 +55,12 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
   sig       <- res$other$sig
   is_weight <- res$other$is_weight
   eevSqrt   <- res$other$eevSqrt
+  sig_org   <- res$other$sig_org
 
   other	  <- list( sf_alpha= sf_alpha, x_id = x_id, model = "resf", par0 = par0, nx = nx, df = df, bias=bias, res=res,
                    x = res$other$xconst, coords = meig$other$coords, dif=res$other$dif,method=method,
                    tr_num = tr_num, y_nonneg = y_nonneg, y_added = y_added, y_type = y_type,eevSqrt = eevSqrt,
-                   xg_levels = xg_levels, is_weight = is_weight, B_covs = B_covs, sig = sig,
+                   xg_levels = xg_levels, is_weight = is_weight, B_covs = B_covs, sig = sig, sig_org=sig_org,
                    y = y0, jackup=jackup, offset=offset, e_NULL = e_NULL, w_scale = w_scale )
 
   result  <-list( b = b, b_g = b_g, c_vc=c_vc, cse_vc=cse_vc, ct_vc = ct_vc, cp_vc = cp_vc,
@@ -113,8 +114,13 @@ print.resf <- function(x, ...)
   if( !is.null(x$skew_kurt)|!is.null(x$tr_bpar) ){
     cat("\n----Estimated probability distribution of y--------------\n")
     if( !is.null(x$skew_kurt) ) print(x$skew_kurt)
-    if( !is.null(x$tr_bpar) ){
+    #if( !is.null(x$tr_bpar) ){
+    #  cat( paste("(Box-Cox parameter: ", format(x$tr_bpar[1], digits=7),")\n",sep="") )
+    #}
+    if( !is.null(x$tr_bpar) & x$other$y_type =="continuous" ){
       cat( paste("(Box-Cox parameter: ", format(x$tr_bpar[1], digits=7),")\n",sep="") )
+    } else if( x$other$y_type =="count" ){
+      cat( paste("(dispersion parameter: ", format(x$other$sig_org, digits=7),")\n",sep="") )
     }
   }
   cat("\n----Error statistics--------------------------\n")

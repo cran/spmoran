@@ -4,83 +4,12 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
                        x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num = 5,
                        meig, method = "reml", penalty = "bic", maxiter = 30, nongauss = NULL ){
 
-  n     	   <- length( y )
-  resf_flag  <- ifelse( is.null(x), 1, 0)
-
-  if( !is.null(nongauss)){
-    y_type   <- nongauss$y_type
-    tr_num   <- nongauss$tr_num
-    y_nonneg <- nongauss$y_nonneg
-    if( y_nonneg ){
-      if( min( y ) < 0 ) stop(" y must be non-negative when y_nonneg = TRUE")
-    }
-
-  } else {
-    y_type   <- "continuous"
-    tr_num   <- 0
-    y_nonneg <- FALSE
-  }
-
-  if(y_type  == "count"){
-    if(min( y ) < 0) stop( "y must be non-negative when y_type = 'count'" )
-    y_nonneg <- FALSE
-
-    if( is.null(weight) ){
-      weight0<- 1
-      weight <- y + 0.5
-    } else {
-      weight0<- weight
-      weight <- weight0*(y+0.5)
-    }
-    zrat     <- sum(y==0)/length(y)
-    y_org    <- y
-    if( is.null(offset) ){
-      y      <- log( y_org + 0.5) - (1 + 0.5*zrat)/( y_org + 0.5 )
-    } else {
-      if( min( offset ) <= 0 ) stop( "offset must be positive" )
-      y      <- log( ( y_org+0.5 )/offset ) - (1 + 0.5*zrat)/( y_org + 0.5 )
-    }
-  } else if( y_type =="continuous"){
-    if( !is.null(offset) ) {
-      message("Note: offset is available only for count data (y_type = count). It is ignored")
-      offset <- NULL
-    }
-  } else {
-    stop( "y_type must be continuous or count" )
-  }
-
-  y_added <- 0
-  jackup  <- FALSE
-  if(min(y) <= 0.00000001){
-    if(y_nonneg){
-      y_added <- 0.00000001
-      y       <- y + y_added
-      #jackup  <- TRUE
-    }
-  }
-  noconst_last <- TRUE
-
-  if( !is.null(weight) ){
-    if( min(weight) <= 0) stop( "weight must be positive" )
-
-    if(length(weight)==1){
-      w_scale <- 1/weight
-    } else {
-      w_scale <- n/sum(weight)
-    }
-
-    weight  <-c( weight*w_scale )
-  } else {
-    w_scale <- 1
-  }
-
 
   {
     af <-function(par,y) par[1]+par[2]*y
     sc <-function(par,y) (y-par[1])/par[2]
     sa <-function(par,y) sinh(par[1]*asinh(y)-par[2])
     bc <-function(par,y, jackup){
-
       yy     <- y + ifelse(jackup, abs( par[2] ), 0 )
       if(par[1]==0){
         res <- log(yy)
@@ -96,27 +25,41 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       }
     }
 
-    d_af<-function(par,y) par[2]
-    d_sc <-function(par,y) 1/par[2]
-    d_sa<-function(par,y) par[1]*cosh(par[1]*asinh(y)-par[2])/sqrt(1+y^2)
-    d_bc<-function(par,y,jackup) (y + ifelse(jackup, abs( par[2] ), 0 ) )^(par[1]-1)#abs(y)^(par-1)
+    d_af <-function(par,y) par[2]
+    d_sc <-function(par,y) rep(1/par[2], length(y))###
+    d_sa <-function(par,y) par[1]*cosh(par[1]*asinh(y)-par[2])/sqrt(1+y^2)
+    d_bc <-function(par,y,jackup) (y + ifelse(jackup, abs( par[2] ), 0 ) )^(par[1]-1)#abs(y)^(par-1)
     d_sal<-function(par,y,noconst=FALSE){
       if(noconst==FALSE){
-        d_af(par=par[3:4],sa(par=par[1:2],y))*d_sa(par=par[1:2],y)
+        par[4]*d_sa(par=par[1:2],y)#d_af(par=par[3:4],sa(par=par[1:2],y))
       } else {
-        d_af(par=c(0, 1),sa(par=par[1:2],y))*d_sa(par=par[1:2],y)
+        d_sa(par=par[1:2],y)# d_af(par=c(0, 1),sa(par=par[1:2],y))*
       }
     }
 
     i_af<-function(par,y) (y-par[1])/par[2]
     i_sc <-function(par,y) par[1]+par[2]*y
     i_sa<-function(par,y) sinh(1/par[1]*(asinh(y)+par[2]))
-    i_bc<-function(par,y,jackup){
+    i_bc<-function(par,y,jackup){#, ulim=NULL
+      y_pre <- y
       if(par[1]==0){
-        exp(y) - ifelse(jackup, abs( par[2] ), 0 )
+        y   <-exp(y) - ifelse(jackup, abs( par[2] ), 0 )
       } else {
-        (par[1]*y + 1)^(1/par[1]) - ifelse(jackup, abs( par[2] ), 0 )
+        y   <- (par[1]*y + 1)^(1/par[1]) - ifelse(jackup, abs( par[2] ), 0 )
       }
+
+      #if( !is.null(ulim) ){
+      #  ulim_id <- which(y_pre > ulim)
+      #  if( length( ulim_id > 1) ){
+      #    y_lower    <-sort(unique(y[-ulim_id]),decreasing=TRUE)[2:1]
+      #    y_pre_lower<-sort(unique(y_pre[-ulim_id]),decreasing=TRUE)[2:1]
+      #    grad_lower <-diff(y_lower)/diff(y_pre_lower)
+      #    y[ulim_id] <-y_lower[2]+(y_pre[ulim_id] - y_pre_lower[2])*grad_lower
+      #  }
+      #}
+
+      if( sum( is.na(y) )>0 ) y[is.na(y)]<-min(y[!is.na(y)]/2)
+      return(y)
     }
 
     i_sal<-function(par,y,noconst=FALSE){
@@ -147,9 +90,11 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       d       <-d_sc(par=z_ms,y)*d
       return(d)
     }
-    i_sal_k   <-function(par,y,k=2,noconst_last=TRUE,bc_par=NULL,y_ms=NULL,z_ms, jackup){
-
+    i_sal_k   <-function(par,y,k=2,noconst_last=TRUE,bc_par=NULL,y_ms=NULL,z_ms, jackup,
+                         y_added2=0){#,ulim=NULL
+      y_pre   <-y
       y       <-i_sc(par=z_ms,y)
+      y       <-y - y_added2
       if(k>0){
         for(kk in k:1) {
           nc_dum<-ifelse((noconst_last==TRUE)&(kk==k),TRUE,FALSE)
@@ -165,9 +110,22 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         y <- i_bc(par=bc_par, y, jackup=jackup)
       }
 
+      #if( !is.null(ulim) ){
+      #  ulim_id <- which(y_pre > ulim)
+      #  if( length( ulim_id > 1) ){
+      #    y_ulim     <- y[ulim_id]
+      #    y_pre_ulim <-y_pre[ulim_id]
+      #    y_lower    <-sort(y[-ulim_id],decreasing=TRUE)[2:1]
+      #    y_pre_lower<-sort(y_pre[-ulim_id],decreasing=TRUE)[2:1]
+      #    grad_lower <-diff(y_lower)/diff(y_pre_lower)
+      #    y[ulim_id] <-y_lower[2]+(y_pre_ulim - y_pre_lower[2])*grad_lower
+      #  }
+      #}
+
+      if( sum( is.na(y) )>0 ) y[is.na(y)]<-min(y[!is.na(y)]/2)
       return(y)
     }
-    sal_k     <-function(par,y,k=2,noconst_last=TRUE,bc_par=NULL, jackup){
+    sal_k     <-function(par,y,k=2,noconst_last=TRUE,bc_par=NULL, jackup,y_added2=0){
 
       if( !is.null(bc_par[1]) ){
         y   <- bc(par=bc_par,y,jackup=jackup)
@@ -184,6 +142,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       } else {
         y_ms<- NULL
       }
+      y     <- y + y_added2
 
       z_ms  <- c( mean(y), sd(y) )
       y     <- sc(par=z_ms,y)
@@ -192,8 +151,12 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     }
 
     ######## Negative log-likelihood (SAL distribution)
-    NLL_sal<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup,weight=NULL){
+    NLL_sal<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup,weight=NULL,plim,
+                      bc_value=NULL,y_added2=0, y_type){
       n   <-length(y)
+      par[par > plim]  <-  plim
+      par[par < -plim] <- -plim
+
       par2<-list(NULL)
       for(kk in 1:k){
         if(noconst_last & (kk==k)){
@@ -211,14 +174,64 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         np_b  <-length(par)
         bc_par<-par[(np_b-1):np_b]
         bc_par[2]<-abs(bc_par[2])
+        if( !is.null( bc_value ) ){
+          bc_par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+        } else {
+          bc_par[1]<- ifelse( bc_par[1] < -5, -5, ifelse( bc_par[1] > 5, 5, bc_par[1]) )
+        }
+
       } else {
         bc_par<-NULL
       }
 
-      z0  <- sal_k(par=par2,y=y,k=k,noconst_last=noconst_last,bc_par=bc_par,jackup=jackup)
+      z0  <- sal_k(par=par2,y=y,k=k,noconst_last=noconst_last,bc_par=bc_par,jackup=jackup,
+                   y_added2=y_added2)
       z   <- z0$y
       z_ms<- z0$z_ms
       y_ms<- z0$y_ms
+
+      #if(1<0){
+      steepen <-0
+      if( y_type=="count" ){
+        yz0    <-cbind(y,z)
+
+        yz_ord <-yz0[order(yz0[,1]),]
+        yz     <-yz_ord[!duplicated(yz_ord[,1]),]
+        uni_y  <-yz[,1];duni_y<-diff(uni_y)
+        uni_z  <-yz[,2];duni_z<-diff(uni_z)
+        duni_n <-length(duni_y)
+        steep1a<-max( (duni_z/duni_y)[-duni_n]/(duni_z/duni_y)[-1] )
+        steep1b<-max( (duni_z/duni_y)[-1]/(duni_z/duni_y)[-duni_n] )
+
+        yz_ord <-yz0[order(yz0[,2]),]
+        yz     <-yz_ord[!duplicated(yz_ord[,2]),]
+        uni_y  <-yz[,1];duni_y<-diff(uni_y)
+        uni_z  <-yz[,2];duni_z<-diff(uni_z)
+        duni_n <-length(duni_y)
+        steep1c<-max( (duni_y/duni_z)[-duni_n]/(duni_y/duni_z)[-1] )
+        steep1d<-max( (duni_y/duni_z)[-1]/(duni_y/duni_z)[-duni_n] )
+
+        steep1 <-max( c(steep1a, steep1b) )#steep1c, steep1d
+
+        if( length(duni_y) >=4 ){
+          steep2   <- (duni_z[2]/duni_y[2]) / (duni_z[3]/duni_y[3])
+          steep3   <- (duni_z[3]/duni_y[3]) / (duni_z[4]/duni_y[4])
+          dsteep123<- c(steep2/steep1, steep3/steep2)
+          dsteepen <- max(dsteep123)/min(dsteep123)
+          dsteep   <- (steep2 > steep1 & steep3 < steep2)|(steep2 < steep1 & steep3 > steep2)
+        } else {
+          dsteep   <- FALSE
+        }
+
+        duni_y_ex_last<-diff( uni_z[(duni_n):(duni_n+1)] )
+        duni_y_last   <-duni_y[duni_n]
+        dsteep_last   <-duni_y_last/duni_y_ex_last
+
+        steepen<-ifelse( steep1 < 10,0,10^10 + steep1^3) +
+          ifelse( dsteep==FALSE,0,10^10 + dsteepen^3) +
+          ifelse( dsteep_last < 1.5, 0, 10^10 + dsteep_last^2)
+      }
+      #}
 
       m   <- t(m0)%*%z
       b   <- Minv%*%m
@@ -228,12 +241,15 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         ee	<- sum( z ^ 2 ) - 2 * t( b ) %*% m + t( b ) %*% M %*% b
       }
       d_abs<-abs( d_sal_k(par=par2,y,k=k,noconst_last=noconst_last,bc_par=bc_par,y_ms=y_ms,z_ms=z_ms,jackup=jackup) )
-      comp<- (-2)*sum( log( d_abs ) )
-      #nll <- ee/2 - comp
-      nll <- n * ( 1 + log( 2 * pi * ee / n ) ) + comp ######################
+      comp<- sum( log( d_abs ) )
+      nll <- n * ( 1 + log( 2 * pi * ee / n ) ) -2*comp + steepen
     }
 
-    NLL_sal2<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup,weight=NULL){
+    NLL_sal2<-function(par,y,M,Minv,m0,k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup,weight=NULL,
+                       plim, bc_value=NULL,y_added2=0){
+      par[par > plim]  <-  plim
+      par[par < -plim] <- -plim
+
       n   <-length(y)
       par2<-list(NULL)
       for(kk in 1:k){
@@ -251,11 +267,18 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         np_b    <-length(par)
         bc_par<-par[(np_b-1):np_b]
         bc_par[2]<-abs(bc_par[2])
+        if( !is.null( bc_value ) ){
+          bc_par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+        } else {
+          bc_par[1]<- ifelse( bc_par[1] < -5, -5, ifelse( bc_par[1] > 5, 5, bc_par[1]) )
+        }
+
       } else {
         bc_par<-NULL
       }
 
-      z0  <- sal_k(par=par2,y=y,k=k,noconst_last=noconst_last,bc_par=bc_par,jackup=jackup)
+      z0  <- sal_k(par=par2,y=y,k=k,noconst_last=noconst_last,bc_par=bc_par,jackup=jackup,
+                   y_added2=y_added2)
       z   <- z0$y
       z_ms<- z0$z_ms
       y_ms<- z0$y_ms
@@ -267,21 +290,70 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       } else {
         ee	<- sum( z ^ 2 ) - 2 * t( b ) %*% m + t( b ) %*% M %*% b
       }
-      d_abs <-abs( d_sal_k(par=par2,y,k=k,noconst_last=noconst_last,bc_par=bc_par,y_ms=y_ms,z_ms=z_ms,jackup=jackup) )
+      d_abs <- abs( d_sal_k(par=par2,y,k=k,noconst_last=noconst_last,bc_par=bc_par,y_ms=y_ms,z_ms=z_ms,jackup=jackup) )
       comp  <- sum( log( d_abs ) )
       #loglik<- ee/2 - comp
-      nll   <- n * ( 1 + log( 2 * pi * ee / n ) ) -2*comp
+      nll   <- n * ( 1 + log( 2 * pi * ee / n ) ) + (-2)*comp
       loglik<- (-1/2)*nll
       return(list(z=z, b=b, loglik=loglik,comp=comp,y_ms=y_ms,z_ms=z_ms))
     }
 
     ######## Negative log-likelihood (BC distribution)
-    NLL_bc <-function(par,y,M,Minv,m0,jackup,weight=NULL){
+    NLL_bc <-function(par,y,M,Minv,m0,jackup,weight=NULL,bc_value=NULL,y_added2=0){
       n     <-length(y)
       par[2]<-abs(par[2])
-      z0  <- bc(par=par,y=y,jackup=jackup)
+      if( !is.null( bc_value ) ){
+        par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+      } else {
+        par[1]<- ifelse( par[1] < -5, -5, ifelse( par[1] > 5, 5, par[1]) )
+      }
+      z0  <- bc(par=par,y=y,jackup=jackup) + y_added2
       z_ms<- c(mean(z0),sd(z0))
-      z   <- (z0-z_ms[1])/z_ms[2]#z0#
+      z   <- (z0-z_ms[1])/z_ms[2]
+
+      #if(1<0){
+      steepen <-0
+      if( y_type=="count" ){
+        yz0   <-cbind(y,z)
+
+        yz_ord<-yz0[order(yz0[,1]),]
+        yz    <-yz_ord[!duplicated(yz_ord[,1]),]
+        uni_y <-yz[,1];duni_y<-diff(uni_y)
+        uni_z <-yz[,2];duni_z<-diff(uni_z)
+        duni_n<-length(duni_y)
+        steep1a<-max( (duni_z/duni_y)[-duni_n]/(duni_z/duni_y)[-1] )
+        steep1b<-max( (duni_z/duni_y)[-1]/(duni_z/duni_y)[-duni_n] )
+
+        yz_ord<-yz0[order(yz0[,2]),]
+        yz    <-yz_ord[!duplicated(yz_ord[,2]),]
+        uni_y <-yz[,1];duni_y<-diff(uni_y)
+        uni_z <-yz[,2];duni_z<-diff(uni_z)
+        duni_n<-length(duni_y)
+        steep1c<-max( (duni_y/duni_z)[-duni_n]/(duni_y/duni_z)[-1] )
+        steep1d<-max( (duni_y/duni_z)[-1]/(duni_y/duni_z)[-duni_n] )
+
+        steep1 <-max( c(steep1a, steep1b) )#,steep1c, steep1d
+
+        if( length(duni_y) >=4 ){
+          steep2   <- (duni_z[2]/duni_y[2]) / (duni_z[3]/duni_y[3])
+          steep3   <- (duni_z[3]/duni_y[3]) / (duni_z[4]/duni_y[4])
+          dsteep123<- c(steep2/steep1, steep3/steep2)
+          dsteepen <- max(dsteep123)/min(dsteep123)
+          dsteep   <- (steep2 > steep1 & steep3 < steep2)|(steep2 < steep1 & steep3 > steep2)
+        } else {
+          dsteep   <- FALSE
+        }
+
+        duni_y_ex_last<-diff( uni_z[(duni_n):(duni_n+1)] )
+        duni_y_last   <-duni_y[duni_n]
+        dsteep_last   <-duni_y_last/duni_y_ex_last
+
+        steepen<-ifelse( steep1 < 10,0,10^10 + steep1^3) +
+          ifelse( dsteep==FALSE,0,10^10 + dsteepen^3) +
+          ifelse( dsteep_last < 1.5, 0, 10^10 + dsteep_last^2)
+      }
+      #}
+
       m   <- t(m0)%*%z
       b   <- Minv%*%m
       if( !is.null(weight)){
@@ -289,15 +361,21 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       } else {
         ee	<- sum( z ^ 2 ) - 2 * t( b ) %*% m + t( b ) %*% M %*% b
       }
-      d_abs<-abs( d_bc( par=par,y,jackup=jackup )*d_sc( par=z_ms,y ) )#abs( d_bc( par=par,y ) )#
+      d_abs<-abs( d_bc( par=par,y,jackup=jackup )*d_sc( par=z_ms,z0 ) )# y -> z0 ####### Fix this ############################
       comp<- sum( log( d_abs ) )
-      #nll <- ee/2 - comp
-      nll   <- n * ( 1 + log( 2 * pi * ee / n ) ) -2*comp
+      nll   <- n * ( 1 + log( 2 * pi * ee / n ) )  -2 * comp + steepen
     }
-    NLL_bc2<-function(par,y, M, Minv,m0,jackup,weight=NULL){
+
+    NLL_bc2<-function(par,y, M, Minv,m0,jackup,weight=NULL,bc_value=NULL,y_added2=0){
       n     <-length(y)
       par[2]<-abs(par[2])
-      z0  <- bc(par=par,y=y,jackup=jackup)
+      if( !is.null( bc_value ) ){
+        par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+      } else {
+        par[1]<- ifelse( par[1] < -5, -5, ifelse( par[1] > 5, 5, par[1]) )
+      }
+
+      z0  <- bc(par=par,y=y,jackup=jackup) + y_added2
       z_ms<- c(mean(z0),sd(z0))
       z   <- (z0-z_ms[1])/z_ms[2]#z0#
       m   <- t(m0)%*%z
@@ -307,17 +385,21 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       } else {
         ee	<- sum( z ^ 2 ) - 2 * t( b ) %*% m + t( b ) %*% M %*% b
       }
-      d_abs <-abs( d_bc( par=par,y,jackup=jackup )*d_sc( par=z_ms,y ) )#abs( d_bc( par=par,y ) )#
+      d_abs <-abs( d_bc( par=par,y,jackup=jackup )*d_sc( par=z_ms,z0 ) )# y->z0 ###### Fix this ############################
       comp  <- sum( log( d_abs ) )
-      #loglik<- ee/2 - comp
       nll   <- n * ( 1 + log( 2 * pi * ee / n ) ) -2*comp
       loglik<- (-1/2)*nll
       return(list(z=z, b=b, loglik=loglik,comp=comp,z_ms=z_ms))#
     }
 
-    lik_resf_vc_tr <- function( par, k, y_nonneg=FALSE,noconst_last=TRUE, X, weight=NULL,
-                                evSqrt, y0, n, nx, emet,M0,Minv,term1,null_dum3=NULL,jackup ){
-      tr_par       <- par
+    lik_resf_vc_tr <- function( par, k, y_nonneg=FALSE,noconst_last=TRUE, X, weight=NULL, bc_value=NULL,
+                                evSqrt, y0, n, nx, emet,M0,Minv,term1,null_dum3=NULL,jackup, plim,
+                                y_added2,y_type){
+      tr_par                 <-  par
+      tr_par[tr_par > plim]  <-  plim
+      tr_par[tr_par < -plim] <- -plim
+
+      steepen <-0
       if(k > 0){
         tr_par2<-list(NULL)
         for(kk in 1:k){
@@ -335,26 +417,84 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
           bc_par<-tr_par[(np_b-1):np_b]
           #if(bc_par[1] < -0.5) bc_par[1] <- -0.5###################### added 2020/12/14
           bc_par[2]<-abs(bc_par[2])
+          if( !is.null( bc_value ) ){
+            bc_par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+          } else {
+            bc_par[1]<- ifelse( bc_par[1] < -5, -5, ifelse( bc_par[1] > 5, 5, bc_par[1]) )
+          }
+
         } else {
           bc_par<-NULL
         }
-        z0      <- sal_k(par=tr_par2,y=y0,k=k,noconst_last=noconst_last,bc_par=bc_par,jackup=jackup)
+        z0      <- sal_k(par=tr_par2,y=y0,k=k,noconst_last=noconst_last,bc_par=bc_par,
+                         jackup=jackup,y_added2 = y_added2)
         z       <- z0$y
         z_ms    <- z0$z_ms
         y_ms    <- z0$y_ms
+
+        #if(1<0){
+        steepen <-0
+        if( y_type=="count" ){
+          yz0   <-cbind(y0,z)
+
+          yz_ord<-yz0[order(yz0[,1]),]
+          yz    <-yz_ord[!duplicated(yz_ord[,1]),]
+          uni_y <-yz[,1];duni_y<-diff(uni_y)
+          uni_z <-yz[,2];duni_z<-diff(uni_z)
+          duni_n<-length(duni_y)
+          steep1a<-max( (duni_z/duni_y)[-duni_n]/(duni_z/duni_y)[-1] )
+          steep1b<-max( (duni_z/duni_y)[-1]/(duni_z/duni_y)[-duni_n] )
+
+          yz_ord<-yz0[order(yz0[,2]),]
+          yz    <-yz_ord[!duplicated(yz_ord[,2]),]
+          uni_y <-yz[,1];duni_y<-diff(uni_y)
+          uni_z <-yz[,2];duni_z<-diff(uni_z)
+          duni_n<-length(duni_y)
+          steep1c<-max( (duni_y/duni_z)[-duni_n]/(duni_y/duni_z)[-1] )
+          steep1d<-max( (duni_y/duni_z)[-1]/(duni_y/duni_z)[-duni_n] )
+          steep1 <-max( c(steep1a, steep1b) )#,steep1c, steep1d
+
+          if( length(duni_y) >=4 ){
+            steep2   <- (duni_z[2]/duni_y[2]) / (duni_z[3]/duni_y[3])
+            steep3   <- (duni_z[3]/duni_y[3]) / (duni_z[4]/duni_y[4])
+            dsteep123<- c(steep2/steep1, steep3/steep2)
+            dsteepen <- max(dsteep123)/min(dsteep123)
+            dsteep   <- (steep2 > steep1 & steep3 < steep2)|(steep2 < steep1 & steep3 > steep2)
+          } else {
+            dsteep   <- FALSE
+          }
+
+          duni_y_ex_last<-diff( uni_z[(duni_n):(duni_n+1)] )
+          duni_y_last   <-duni_y[duni_n]
+          dsteep_last   <-duni_y_last/duni_y_ex_last
+
+          steepen<-ifelse( steep1 < 10,0,10^10 + steep1^3) +
+            ifelse( dsteep==FALSE,0,10^10 + dsteepen^3) +
+            ifelse( dsteep_last < 1.5, 0, 10^10 + dsteep_last^2)
+        }
+        #}
+
         d_abs   <- abs( d_sal_k( par=tr_par2 ,y=y0, k=k,noconst_last=noconst_last,
                                  bc_par=bc_par,y_ms=y_ms,z_ms=z_ms,jackup=jackup ) )
         comp    <- (-2)*sum( log( d_abs ))
 
-        if(max(abs(z_ms)) > 10^10){######### deleted
+        if( is.na(max(abs(z_ms))) ){
+          comp  <- 10^100
+        } else if(max(abs(z_ms)) > 10^10){######### deleted
           comp  <- 10^100
         }
 
       } else if(y_nonneg){
-        z0      <- bc(par=tr_par,y=y0,jackup=jackup)
+        if( !is.null( bc_value ) ){
+          tr_par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+        } else {
+          tr_par[1]<- ifelse( tr_par[1] < -5, -5, ifelse( tr_par[1] > 5, 5, tr_par[1]) )
+        }
+
+        z0      <- bc(par=tr_par,y=y0,jackup=jackup) + y_added2
         z_ms    <- c(mean(z0),sd(z0))
         z       <- (z0-z_ms[1])/z_ms[2]
-        d_abs   <- abs( d_bc(par=tr_par,y0,jackup=jackup)*d_sc(par=z_ms,y0) )
+        d_abs   <- abs( d_bc(par=tr_par,y0,jackup=jackup)*d_sc(par=z_ms,z0) )#y0 ->z0###### Fix this ############################
         comp    <- (-2)*sum( log( d_abs ) )
       } else {
         z       <- y0
@@ -379,7 +519,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       } else if( emet == "ml" ){
         term2	<- n * ( 1 + log( 2 * pi * dd / n ) )
       }
-      loglik		<- term1 + term2 + comp
+      loglik		<- term1 + term2 + comp + steepen
 
       if(is.nan(loglik)) loglik <-10^100
       if(is.na(loglik))  loglik <-10^100
@@ -387,7 +527,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       return( loglik[ 1 ] )
     }
 
-    lm_cw<-function(y, M, Minv, m0, k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup,weight=NULL){
+    lm_cw<-function(y, M, Minv, m0, k=2,noconst_last=TRUE,y_nonneg=FALSE,jackup,weight=NULL,
+                    plim, bc_value=NULL,y_added2=0){
 
       if(k != 0){
         par00<-rep(c(1,0,0,1),k)
@@ -401,14 +542,22 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         }
 
         if(y_nonneg){
-          par00<-c(par00,1, 0.001)
+          if(!is.null(bc_value)) {
+            par00<-c(par00,bc_value, 0.001)
+          } else {
+            par00<-c(par00,1, 0.001)
+          }
           #lower<-c(lower, -1, 0)
           #upper<-c(upper,  5, 10)
         }
         res    <-optim(par=par00,fn=NLL_sal, y=y,M=M,Minv=Minv,m0=m0,k=k,weight=weight,
-                       noconst_last=noconst_last,y_nonneg=y_nonneg,jackup=jackup)
+                       noconst_last=noconst_last,y_nonneg=y_nonneg,jackup=jackup,
+                       plim=plim,bc_value=bc_value,y_added2=y_added2,y_type=y_type)
         #method="L-BFGS-B",lower=lower,upper=upper)
         est0   <-res$par
+        est0[est0 >  plim] <-  plim
+        est0[est0 < -plim] <- -plim
+
         est    <-list(NULL)
         for(kk in 1:k){
           if(noconst_last & (kk==k)){
@@ -425,13 +574,18 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
           np_be      <- length(est0)
           bc_par     <- est0[(np_be-1):np_be]
           if(jackup) bc_par[2]  <- abs(bc_par[2])
-          #bc_par     <- est0[length(est0)]
+          if( !is.null( bc_value ) ){
+            bc_par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+          } else {
+            bc_par[1]<- ifelse( bc_par[1] < -5, -5, ifelse( bc_par[1] > 5, 5, bc_par[1]) )
+          }
           est[[kk+1]]<- bc_par
         } else {
           bc_par<-NULL
         }
         res2  <-NLL_sal2(par=unlist(est), y=y, M=M, Minv=Minv, m0=m0,k=k,weight=weight,
-                         noconst_last=noconst_last, y_nonneg=y_nonneg,jackup=jackup)
+                         noconst_last=noconst_last, y_nonneg=y_nonneg,jackup=jackup,
+                         plim=plim, bc_value = bc_value,y_added2=y_added2)
         b     <-res2$b
         z     <-res2$z
         loglik<-res2$loglik
@@ -447,12 +601,25 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         #bc_par<-res$minimum
         #est   <-NULL
 
-        res   <-optim(par=c(1,0.001),fn=NLL_bc,y=y,M=M,Minv=Minv,m0=m0,jackup=jackup,weight=weight  )# interval=c(-5,5)
+        if(!is.null(bc_value)){
+          bc_par0<-c(bc_value, 0.001)
+        } else {
+          bc_par0<-c(1, 0.001)
+        }
+        res   <-optim(par=bc_par0,fn=NLL_bc,y=y,M=M,Minv=Minv,m0=m0,jackup=jackup,
+                      weight=weight, bc_value=bc_value,y_added2=y_added2)# interval=c(-5,5)
         bc_par<-res$par
         bc_par[2]<-abs(bc_par[2])
+        if( !is.null( bc_value ) ){
+          bc_par[1]<- ifelse( bc_value < -1, -1, ifelse( bc_value > 5, 5, bc_value) )
+        } else {
+          bc_par[1]<- ifelse( bc_par[1] < -5, -5, ifelse( bc_par[1] > 5, 5, bc_par[1]) )
+        }
+
         est   <-NULL
 
-        res2  <-NLL_bc2(par=bc_par, y=y, M=M, Minv=Minv, m0=m0,jackup=jackup,weight=weight )
+        res2  <-NLL_bc2(par=bc_par, y=y, M=M, Minv=Minv, m0=m0,jackup=jackup,weight=weight,
+                        bc_value=bc_value,y_added2=y_added2 )
         b     <-res2$b
         z     <-res2$z
         loglik<-res2$loglik
@@ -475,85 +642,85 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       return(list(vpar=est,bc_par=bc_par,b=b,z=z,loglik=loglik,comp=comp,
                   y_ms=y_ms,z_ms=z_ms))
     }
-  }
 
-
-  Mdet_f0	  	<- function( M, M0, id, par0_sel, emet ){
-    if( emet == "ml" ){
-      M	  <- M [ id != 0, id != 0 ]
-      M0	<- M0[ id != 0, id != 0 ]
-      id	<- id[ id != 0 ]
-    }
-    if(sum( id != par0_sel ) == 0 ){
-      term2	  <- NULL
-      term3_0	<- M[ id == par0_sel, id == par0_sel ]
-    } else {
-      M0_sub	<- as.matrix(M0[ id != par0_sel, id != par0_sel ])
-      term2		<- determinant( M0_sub )$modulus
-      Msub_00	<- M[ id == par0_sel, id == par0_sel ]
-      Msub_01	<- M[ id == par0_sel, id != par0_sel ]
-      if(sum(id == par0_sel)==1){
-        term3_0	<- Msub_00 - c( t( Msub_01 ) %*% solve( M0_sub, tol = 1e-30 ) %*% Msub_01 )
-      } else {
-        term3_0	<- Msub_00 - Msub_01 %*% solve( M0_sub, tol = 1e-30 ) %*% t( Msub_01 )
+    Mdet_f0	  	<- function( M, M0, id, par0_sel, emet ){
+      if( emet == "ml" ){
+        M	  <- M [ id != 0, id != 0 ]
+        M0	<- M0[ id != 0, id != 0 ]
+        id	<- id[ id != 0 ]
       }
+      if(sum( id != par0_sel ) == 0 ){
+        term2	  <- NULL
+        term3_0	<- M[ id == par0_sel, id == par0_sel ]
+      } else {
+        M0_sub	<- as.matrix(M0[ id != par0_sel, id != par0_sel ])
+        term2		<- determinant( M0_sub )$modulus
+        Msub_00	<- M[ id == par0_sel, id == par0_sel ]
+        Msub_01	<- M[ id == par0_sel, id != par0_sel ]
+        if(sum(id == par0_sel)==1){
+          term3_0	<- Msub_00 - c( t( Msub_01 ) %*% solve( M0_sub, tol = 1e-30 ) %*% Msub_01 )
+        } else {
+          term3_0	<- Msub_00 - Msub_01 %*% solve( M0_sub, tol = 1e-30 ) %*% t( Msub_01 )
+        }
+      }
+      return(list(term2 = term2, term3_0 = term3_0))
     }
-    return(list(term2 = term2, term3_0 = term3_0))
-  }
 
-  Mdet_f	  	<- function( evSqrt, id, term2, term3_0, par0_sel ){
-    term1		  <- sum( log( evSqrt ) ) * 2
-    if( dim( as.matrix( term3_0 ) )[1] == 1 ){
-      term3_0 <- term3_0 + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
-      term3_0 <- as.matrix(term3_0)
-    } else {
-      diag( term3_0 ) <- diag( term3_0 ) + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+    Mdet_f	  	<- function( evSqrt, id, term2, term3_0, par0_sel ){
+      term1		  <- sum( log( evSqrt ) ) * 2
+      if( dim( as.matrix( term3_0 ) )[1] == 1 ){
+        term3_0 <- term3_0 + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+        term3_0 <- as.matrix(term3_0)
+      } else {
+        diag( term3_0 ) <- diag( term3_0 ) + 1/evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
+      }
+
+      term3	  <- determinant( term3_0 )$modulus
+      if( is.null( term2 )  ){
+        Mdet    <- term1 + term3
+      } else {
+        Mdet	  <- term1 + term2 + term3
+      }
+      return(Mdet)
     }
 
-    term3	  <- determinant( term3_0 )$modulus
-    if( is.null( term2 )  ){
-      Mdet    <- term1 + term3
-    } else {
-      Mdet	  <- term1 + term2 + term3
-    }
-    return(Mdet)
   }
 
   lik_resf_vc		<- function( par0, par0_est, par0_id, par0_sel, ev, M, M0inv, M0inv_01, M0inv_00,
                             m, yy, b_01, b_02, n, nx, nsv, nnxf, nnsv, ng, emet, term2, term3_0, null_dum2,
                             id, tr_comp=0 ){
-    par		<- par0 ^ 2
+    par		    <- par0 ^ 2
     par_est		<- par0_est ^ 2
     par[ par0_id == par0_sel ]  <- par_est
-    evSqrt	<- NULL
+    evSqrt	  <- NULL
     for( i in ( 1:nsv )[ null_dum2[ 1:nsv ] == 0 ] ){
-      evv  	<- ev ^ par[ nsv + i ] * sum( ev ) / sum( ev ^ par[ nsv + i ] )
+      evv  	  <- ev ^ par[ nsv + i ] * sum( ev ) / sum( ev ^ par[ nsv + i ] )
       evSqrt	<- c( evSqrt, par[ i ] * sqrt( evv ) )
     }
 
     if( ng != 0 ){
       for( j in (1:ng)[ null_dum2[ (( nsv + 1 ):( nsv + ng )) ] == 0 ] ){
-        xgg	<- rep( 1, sum( id == nsv + j ) )
-        evSqrt	<- c( evSqrt, par[ 2 * nsv + j ] * xgg )
+        xgg	  <- rep( 1, sum( id == nsv + j ) )
+        evSqrt<- c( evSqrt, par[ 2 * nsv + j ] * xgg )
       }
     }
 
     if( nnxf != 0 ){
       for( i2 in (1:nnxf)[ null_dum2[ (nsv+ng+1):(nsv+ng+nnxf) ] == 0 ] ){
-        xgg	<- rep( 1, sum( id == ( nsv+ ng + i2 ) ) )
-        evSqrt	<- c( evSqrt, par[ 2 * nsv + ng + i2 ] * xgg )
+        xgg	  <- rep( 1, sum( id == ( nsv+ ng + i2 ) ) )
+        evSqrt<- c( evSqrt, par[ 2 * nsv + ng + i2 ] * xgg )
       }
     }
 
     if( nnsv != 0 ){
       for( i2 in (1:nnsv)[ null_dum2[ (nsv+ng+nnxf+1):(nsv+ng+nnxf+nnsv) ] == 0 ] ){
-        xgg	<- rep( 1, sum( id == ( nsv + ng + nnxf + i2 ) ) )
-        evSqrt	<- c( evSqrt, par[ 2 * nsv + ng + nnxf + i2 ] * xgg )
+        xgg	  <- rep( 1, sum( id == ( nsv + ng + nnxf + i2 ) ) )
+        evSqrt<- c( evSqrt, par[ 2 * nsv + ng + nnxf + i2 ] * xgg )
       }
     }
 
     Mdet		<- Mdet_f( id = id, par0_sel=par0_sel, term2 = term2, term3_0 = term3_0, evSqrt = evSqrt )
-    M2		<- M
+    M2		  <- M
     for( j in 1:max( id ) ){
       if( sum( id == j )==1){
         M[ id == j, id == j ]       <- M[ id == j, id == j ] + 1/evSqrt[ id[ -c( 1:nx ) ] == j ] ^ 2
@@ -617,7 +784,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
     m[-(1:nx)]		<- m[ -( 1:nx ) ] * evSqrt
     test			<-try(Minv	<- solve( M, tol = 1e-30 ))
-    if(class(test)[1]=="try-error"){
+    if( inherits(test, "try-error") ){#class(test)[1]=="try-error"
       loglik  	<- Inf
     } else {
       b		<- Minv %*% m
@@ -641,7 +808,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     while(tres3){
       suppressWarnings(cor_test0<-cor(test0))
       testt2<-try(vif <- diag(solve(cor_test0)), silent=TRUE)
-      if( class(testt2)=="try-error" ){
+      if( inherits(testt2, "try-error" ) ){#class(testt2)=="try-error"
         suppressWarnings(corr_0<-cor(test0))
         diag(corr_0)<-0
         cor_max <-apply(corr_0,2,max)
@@ -658,6 +825,86 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       }
     }
     return(list(basis=test0,sel=sel))
+  }
+
+
+  n     	   <- length( y )
+  resf_flag  <- ifelse( is.null(x), 1, 0)
+  if( !is.null(nongauss)){
+    y_type   <- nongauss$y_type
+    tr_num   <- nongauss$tr_num
+    y_nonneg <- nongauss$y_nonneg
+    if( y_nonneg ){
+      if( min( y ) < 0 ) stop(" y must be non-negative when y_nonneg = TRUE")
+    }
+
+  } else {
+    y_type   <- "continuous"
+    tr_num   <- 0
+    y_nonneg <- FALSE
+  }
+
+  y_added <- 0
+  y_added2<- 0
+  if(y_type  == "count"){
+    bc_value <- NULL
+    y_nonneg <- FALSE
+    y_org    <- y
+    if( is.null(offset) ){
+      y      <- log( y_org + 0.5 ) + y_added2
+    } else {
+      if( min( offset ) <= 0 ) stop( "offset must be positive" )
+      y      <- log( ( y_org+0.5 )/offset ) + y_added2
+    }
+
+    zrat     <- sum(y_org==0)/length(y_org)
+    y_added  <- 0#0.5
+    y_added2 <- 0#-(1+0.5*zrat)/(y_org+0.5)
+    #if(tr_num==0) y<- y + y_added2
+    #y<- y + y_added2
+    #y_added2<-0
+
+    if( is.null(weight) ){
+      weight0<- 1
+      weight <- y_org + 0.5
+    } else {
+      weight0<- weight
+      weight <- weight0*(y_org+0.5)
+    }
+
+  } else if( y_type =="continuous"){
+    if( !is.null(offset) ) {
+      message("Note: offset is available only for count data (y_type = count). It is ignored")
+      offset <- NULL
+    }
+
+    if(min(y) <= 0.00000001){
+      if(y_nonneg){
+        y_added <- 0.00000001
+        y       <- y + y_added
+        #jackup  <- TRUE
+      }
+    }
+
+  } else {
+    stop( "y_type must be continuous or count" )
+  }
+
+  jackup  <- FALSE
+  noconst_last <- TRUE
+
+  if( !is.null(weight) ){
+    if( min(weight) <= 0) stop( "weight must be positive" )
+
+    if(length(weight)==1){
+      w_scale <- 1/weight
+    } else {
+      w_scale <- n/sum(weight)
+    }
+
+    weight  <-c( weight*w_scale )
+  } else {
+    w_scale <- 1
   }
 
   nvc_x       <- x_nvc
@@ -680,7 +927,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   }
 
   if( is.logical( xconst_nvc_sel ) ){
-    allnvc_xconst<- !xconst_nvc_sel
+    allnvc_xconst     <- !xconst_nvc_sel
     allnvc_xconst_flag<-0
   } else {
     allnvc_xconst<- xconst_nvc_sel
@@ -787,14 +1034,14 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         kkk  <- np_xx[ ii ]-iiii
         knots<-seq(min( X1_nvc[ , ii ] ),max( X1_nvc[ , ii ] ),len=kkk+2)[2:(kkk+1)]
         testt<- try(XX1_00<- ns( X1_nvc[ ,ii ], knots = knots ), silent=TRUE)#replaced
-        test <- class(testt)[1] == "try-error"
+        test <- inherits(testt, "try-error")#class(testt)[1] == "try-error"
         iiii <- iiii+1
       }
 
       XX1_00      <- cbind( X1_nvc[,ii], XX1_00)
       sel_basis_n[[ ii ]]    <- 1:dim(XX1_00)[2]
       testt2<-try(XX1_00_mod <- sel_basis_vif( XX1_00, vif_max=15),silent=TRUE)
-      if(class(testt2)[1] != "try-error"){
+      if( !inherits(testt2, "try-error") ){#class(testt2)[1] != "try-error"
         XX1_00               <- XX1_00_mod$basis
         sel_basis_n[[ ii ]]  <- XX1_00_mod$sel
         np_xx[ ii ]          <- dim(XX1_00)[2]
@@ -837,14 +1084,14 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         knots    <-seq(min( Xconst_nvc[ ,ii ] ),max( Xconst_nvc[ ,ii ] ),len=kkk+2)[2:(kkk+1)]
         #testt<-try(XXconst_00<- scale( poly( Xconst_nvc[ , ii ], np_xxconst[ ii ]-iiii )[ , -1 ] ), silent=TRUE)
         testt<- try(XXconst_00<- ns( Xconst_nvc[ , ii], knots = knots ), silent=TRUE)
-        test <- class(testt)[1] == "try-error"
+        test <- inherits(testt, "try-error")#class(testt)[1] == "try-error"
         iiii <- iiii+1
       }
 
       XXconst_00<- cbind( Xconst_nvc[,ii], XXconst_00)
       sel_basis_c[[ ii ]]    <- 1:dim(XXconst_00)[2]
       testt2<-try(XXconst_00_mod     <- sel_basis_vif( XXconst_00, vif_max=15),silent=TRUE)
-      if(class(testt2)[1] != "try-error"){
+      if( !inherits(testt2, "try-error") ){#class(testt2)[1] != "try-error"
         XXconst_00       <- XXconst_00_mod$basis
         sel_basis_c[[ii]]<- XXconst_00_mod$sel
         np_xxconst[ ii ] <- dim(XXconst_00)[2]
@@ -996,6 +1243,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   M   <- crossprod( X )
 
   y0  <- y
+  plim<- 10
   if( ( tr_num > 0 )|( y_nonneg == TRUE ) ){
     Moinv  <- solve(Mo)
     if( !is.null(weight) ){
@@ -1004,17 +1252,21 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       m0   <- X0
     }
     cv_init<-lm_cw(y=y0, M=Mo, Minv=Moinv,m0=m0,k=tr_num,noconst_last=noconst_last,
-                   y_nonneg=y_nonneg,jackup=jackup, weight = weight)
+                   y_nonneg=y_nonneg,jackup=jackup, weight = weight, plim=plim, bc_value=bc_value,
+                   y_added2=y_added2)
     y      <-cv_init$z
     tr_par <-cv_init$vpar[1:tr_num]
     tr_bpar<-cv_init$bc_par
-    if(jackup){
-      tr_bpar[2]<-abs(tr_bpar[2])
-    } else {
-      tr_bpar[2]<-0
+    if( y_nonneg == TRUE ){
+      if( jackup ){
+        tr_bpar[2]<-abs(tr_bpar[2])
+      } else {
+        tr_bpar[2]<-0
+      }
     }
+
     tr_npar<-length(unlist(c(tr_par,tr_bpar)))
-    if( jackup==FALSE ) tr_npar<- tr_npar - 1
+    #if( jackup==FALSE ) tr_npar<- tr_npar - 1
     tr_comp<-cv_init$comp
     tr_par0<-NULL
 
@@ -1200,7 +1452,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
           try1	<- try( M0inv	<- solve( MM0,  tol = 1e-30 ), silent = TRUE )
           try2	<- try( Mdet0	<- Mdet_f0( M = MM, M0 = MM0, id = idd,
                                          par0_sel = par0_sel, emet = method ), silent = TRUE)
-          er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
+          #er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
+          er_dum	<- inherits( try1, "try-error" )|inherits( try2, "try-error" )
 
           if( er_dum == TRUE ){
             M	<- M [ id_omit1 == 0, id_omit1 == 0 ]
@@ -1372,7 +1625,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     }
 
     ########################################### TWGP: main
-    if((tr_num != 0)|(y_nonneg)){ ####### with transformation
+    if((tr_num != 0)|( y_nonneg )){ ####### with transformation
       evSqrt	<- NULL
       par0_sq	<- par0 ^ 2
       for( i in ( 1:nsv )[ null_dum[ 1:nsv ] == 0 ] ){
@@ -1443,7 +1696,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       n_omit0	<- 0
       while( er_dum == TRUE ){
         try1	<- try( M0inv	<- solve( MM0,  tol = 1e-30 ), silent = TRUE )
-        er_dum	<- ( class(try1)[1] =="try-error" )
+        er_dum<- inherits( try1, "try-error")#( class(try1)[1] =="try-error" )
 
         if( er_dum == TRUE ){
           M	<- M [ id_omit1 == 0, id_omit1 == 0 ]
@@ -1507,7 +1760,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
       res      <-optim(par=tr_par0,fn=lik_resf_vc_tr, k=tr_num, y_nonneg=y_nonneg,noconst_last=noconst_last,
                        evSqrt=evSqrt, y0=y0, n=n, nx=nx, emet=method, X=X,M0=MM0,Minv=MMinv,term1=term1,
-                       null_dum3=null_dum3,jackup=jackup, weight=weight, control=list(maxit=100))#,
+                       null_dum3=null_dum3,jackup=jackup, plim=plim, y_type=y_type,
+                       y_added2=y_added2,weight=weight, control=list(maxit=100))#,
       #method="L-BFGS-B",lower=lower,upper=upper)
 
       score_tr   <-res$value + pen * (nx+sum(par0!=0)+1+tr_npar)
@@ -1518,6 +1772,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         loglik	 <- (-1/2)*c( res$value )
         score    <-score_tr
         tr_est0  <-res$par#c(1,0,0,1)
+        tr_est0[tr_est0 >  plim] <-  plim
+        tr_est0[tr_est0 < -plim] <- -plim
+
         tr_par   <-list(NULL)
         for(kk in 1:tr_num){
           if(noconst_last & (kk==tr_num)){
@@ -1533,16 +1790,22 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         if(y_nonneg){
           np_b      <-length(tr_est0)
           tr_bpar   <- tr_est0[(np_b - 1):np_b]
-          if(jackup){
+          if( jackup  ){
             tr_bpar[2]<- abs(tr_bpar[2])
           } else {
             tr_bpar[2]<- 0
           }
+          if( !is.null( bc_value ) ){
+            tr_bpar[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+          } else {
+            tr_bpar[1]<- ifelse( tr_bpar[1] < -5, -5, ifelse( tr_bpar[1] > 5, 5, tr_bpar[1]) )
+          }
+
         } else {
           tr_bpar   <- NULL
         }
 
-        z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,jackup=jackup)
+        z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,jackup=jackup,y_added2=y_added2)
         y        <- z0$y
         z_ms     <- z0$z_ms
         y_ms     <- z0$y_ms
@@ -1562,13 +1825,27 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
           yy  <- sum( y ^ 2 )
           parVmax_sq <- sqrt( sd( y ) / sd( y - X0 %*% ( solve( Mo ) %*% mo ) ) )
         }
+
+        #print(tr_comp)
       }
 
     } else if(y_nonneg){ ####### without sal layer (only boxcox)
 
-      res     <-optim(par=c(1,0.01),fn=lik_resf_vc_tr, k=tr_num, y_nonneg=y_nonneg,noconst_last=noconst_last,
+      if(!is.null(bc_value)){
+        bc0_par<-c(bc_value,0.01)
+      } else {
+        bc0_par<-c(1,0.01)
+      }
+      res     <-optim(par=bc0_par,fn=lik_resf_vc_tr, k=tr_num, y_nonneg=y_nonneg,noconst_last=noconst_last,
                       evSqrt=evSqrt, y0=y0, n=n, nx=nx, emet=method, X=X,M0=MM0,Minv=MMinv,term1=term1,
-                      null_dum3=null_dum3,jackup=jackup, weight=weight)#interval=c(-5, 5),
+                      null_dum3=null_dum3,jackup=jackup, weight=weight, plim=plim,y_added2=y_added2,
+                      y_type=y_type)#interval=c(-5, 5),
+      if( !is.null( bc_value ) ){
+        res$par[1]<- ifelse( bc_value < -5, -5, ifelse( bc_value > 5, 5, bc_value) )
+      } else {
+        res$par[1]<- ifelse( res$par[1] < -5, -5, ifelse( res$par[1] > 5, 5, res$par[1]) )
+      }
+
       score_tr  <-res$value + pen * (nx+sum(par0!=0)+1+tr_npar)
       if( !is.null(weight )) score_tr <- score_tr - sum( log( weight ))
 
@@ -1583,7 +1860,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
           tr_bpar[2]<-0
         }
         tr_comp <- sum( log(d_bc(par=tr_bpar,y=y0,jackup=jackup)) )
-        y       <- bc(par=tr_bpar, y=y0,jackup=jackup )
+        y       <- bc(par=tr_bpar, y=y0,jackup=jackup ) + y_added2
 
         if( !is.null(weight) ) {
           w_y <- weight * y
@@ -1600,8 +1877,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         }
       }
     } else {
+
       res_old	  <- res$value
-      loglik 	  <- ( -1 / 2 ) * res$value
+      loglik 	  <- ( -1 / 2 ) * res_old
       score     <- res_old + pen * (nx+sum(par0!=0)+1+tr_npar)
       if( !is.null(weight)) score     <- score - sum( log( weight ))
 
@@ -1626,6 +1904,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     if( !is.null(x) ) print( paste( toupper( penalty ), ": ", round( score, 3 ), sep = "" ) )
     iter	  <- iter + 1
   }
+
+
+  weight_lik<-weight
 
   par2   	<- par0 ^ 2
   evSqrt	<- NULL
@@ -1682,49 +1963,98 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   b               <- MMinv %*% mm
   b[ -( 1:nx ) ]	<- b[ -( 1:nx ) ] * eevSqrt
 
-  ############################################# Poisson estimator
-  if( y_type == "count" ){
-    pred0_lm   <- X_org[ , null_dum3 ] %*% b
-    weight00   <- c(  weight0 * exp(pred0_lm) )
-    w_scale    <- n/sum(weight00)
-    weight     <- c( weight00*w_scale )
-
-    X          <- sqrt( weight ) * X_org#[ , null_dum3 ]
-    M          <- crossprod( X )
-
-    if( tr_num > 0 ){
-      z0_p     <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,
-                        bc_par=NULL,jackup=jackup)
-      z_ms     <- z0_p$z_ms
-      y_ms     <- z0_p$y_ms
-      pred1_lm <- i_sal_k(par=tr_par,y=pred0_lm,k=tr_num,noconst_last=noconst_last,
-                          bc_par=NULL,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
-    } else {
-      pred1_lm <- pred0_lm
-    }
-
-    pred1_ex<- exp(pred1_lm)
-    if( !is.null( offset ) ) pred1_ex <- offset*pred1_ex
-    y_p     <- sqrt(weight) * (pred0_lm + (y_org - pred1_ex)/pred1_ex)
-    m	      <- crossprod( X , y_p )
-
-    MM		  <- M[ null_dum3, null_dum3 ]
-    MM[ -( 1:nx ), -( 1:nx ) ]	<- t( MM[ -( 1:nx ), -( 1:nx ) ] * eevSqrt ) * eevSqrt
-    MM[ -( 1:nx ),    1:nx   ]	<-    MM[ -( 1:nx ),    1:nx   ] * eevSqrt
-    MM[    1:nx  , -( 1:nx ) ]	<- t( MM[ -( 1:nx ),    1:nx   ] )
-    diag( MM [ -( 1:nx ), -( 1:nx ) ] ) <- diag( MM[ -( 1:nx ), -( 1:nx ) ] ) + 1
-    MMinv	  <- solve( MM, tol = 1e-30 )
-    mm		          <- m [ null_dum3 ]
-    mm[ -( 1:nx ) ]	<- mm[ -( 1:nx ) ] * eevSqrt
-    b               <- MMinv %*% mm            #u
-    b[ -( 1:nx ) ]	<- b[ -( 1:nx ) ] * eevSqrt#Vu
-  }
-
-  #############################################
-
   X3        <- X
   X3[, null_dum3 ][,-( 1:nx )]<- t(t(X[, null_dum3 ][,-( 1:nx )])* eevSqrt)
   nxx       <- nx
+
+  ############################################# Poisson estimator
+  #ulim      <- NULL
+  if( y_type == "count" ){
+    pred0_lm   <- X_org[ , null_dum3 ] %*% b
+
+    if( tr_num > 0 ){
+      z0_p     <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,
+                        bc_par=tr_bpar,jackup=jackup,y_added2=y_added2)#
+      z_ms     <- z0_p$z_ms
+      y_ms     <- z0_p$y_ms
+      #ulim     <- max(z0_p$y)
+      pred0_ex <- i_sal_k(par=tr_par,y=pred0_lm,k=tr_num,noconst_last=noconst_last,
+                          bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup)#y_added2=y_added2,ulim=ulim
+    } else {
+      pred0_ex  <-pred0_lm
+      #ulim      <- max(bc(par=tr_bpar,y=y0,jackup=jackup))
+      #pred0_ex  <- i_bc(par=tr_bpar,y=pred0_lm,jackup=jackup)#,ulim=ulim
+    }
+
+    pred0_ex   <- exp(pred0_ex)
+    if( !is.null( offset ) ) pred0_ex <- offset*pred0_ex
+
+    #########
+    weight00    <- c(  weight0 * pred0_ex )
+    w_scale_test<- n/sum(weight00)
+    weight_test <- c( weight00*w_scale_test )
+
+    y_p        <- sqrt( weight_test ) * (pred0_lm + (y_org - pred0_ex)/pred0_ex)
+    X_test     <- sqrt( weight_test ) * X_org
+    M_test     <- crossprod( X_test )
+    m_test	   <- crossprod( X_test , y_p )
+
+    MM_test		  <- M_test[ null_dum3, null_dum3 ]
+    MM_test[ -( 1:nx ), -( 1:nx ) ]	<- t( MM_test[ -( 1:nx ), -( 1:nx ) ] * eevSqrt ) * eevSqrt
+    MM_test[ -( 1:nx ),    1:nx   ]	<-    MM_test[ -( 1:nx ),    1:nx   ] * eevSqrt
+    MM_test[    1:nx  , -( 1:nx ) ]	<- t( MM_test[ -( 1:nx ),    1:nx   ] )
+    diag( MM_test [ -( 1:nx ), -( 1:nx ) ] ) <- diag( MM_test[ -( 1:nx ), -( 1:nx ) ] ) + 1
+    MMinv_test	  <- solve( MM_test, tol = 1e-30 )
+    mm_test		            <- m_test [ null_dum3 ]
+    mm_test[ -( 1:nx ) ]	<- mm_test[ -( 1:nx ) ] * eevSqrt
+    b_test                <- MMinv_test %*% mm_test            #u
+    b_test[ -( 1:nx ) ]	  <- b_test[ -( 1:nx ) ] * eevSqrt#Vu
+
+    X3_test        <- X_test
+    X3_test[, null_dum3 ][,-( 1:nx )]<- t(t(X_test[, null_dum3 ][,-( 1:nx )])* eevSqrt)
+
+    pred0_lm_test  <- X_org[ , null_dum3 ] %*% b_test
+
+    if( tr_num > 0 ){
+      pred0_ex_test <- i_sal_k(par=tr_par,y=pred0_lm_test,k=tr_num,noconst_last=noconst_last,
+                               bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup)#y_added2=y_added2,ulim=ulim
+    } else {
+      pred0_ex_test <- pred0_lm_test
+      #pred0_ex_test <- i_bc(par=tr_bpar,y=pred0_lm_test,jackup=jackup)# - y_added,ulim=ulim
+    }
+
+    pred0_ex_test   <- exp(pred0_ex_test)
+    if( !is.null( offset ) ) pred0_ex_test <- offset*pred0_ex_test
+
+    ######## devance
+    nz_dum     <- (y_org > 0) & ( pred0_ex_test[,1] > 0) & ( pred0_ex[,1] > 0)
+    dev1        <- 2*sum(y_org[nz_dum]*log(y_org[nz_dum]/pred0_ex[nz_dum])) - 2*sum(y_org - pred0_ex)
+    dev1_test   <- 2*sum(y_org[nz_dum]*log(y_org[nz_dum]/pred0_ex_test[nz_dum])) - 2*sum(y_org - pred0_ex_test)
+    if(dev1 >= dev1_test){
+      X    <- X_test
+      X3   <- X3_test
+      M    <- m_test
+      m    <- m_test
+      MM   <- MM_test
+      mm   <- mm_test
+      MMinv<- MMinv_test
+      weight<-weight_test
+      w_scale<-w_scale_test
+      b    <- b_test
+      pred0_ex<-pred0_ex_test
+      dev1 <- dev1_test
+    }
+
+    ######## null deviance
+    y_mean    <- mean( y_org[nz_dum] )
+    dev0      <- 2*sum(y_org[nz_dum]*log(y_org[nz_dum]/y_mean )) - 2*sum(y_org - y_mean )
+    dev_rat0  <- (sum( dev0 ) - sum( dev1 ))/sum( dev0 )
+    dev_rat   <- ifelse( dev_rat0 < 0, 0, dev_rat0)
+
+    ######## mean squared error
+    rmse      <- sqrt( mean((y_org - pred0_ex)^2) )
+  }
+
 
   if( y_type == "continuous"){
     if( !is.null( weight ) ){
@@ -1759,7 +2089,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   } else if( y_type == "count" ){
     pred0	  <- X_org[ , null_dum3 ] %*% b
     resid	  <- y - pred0
-    sig_org <- sum( ( y_org - pred1_ex )^2 / pred1_ex )/( n - nxx )
+    sig_org <- sum( ( y_org - pred0_ex )^2 / pred0_ex )/( n - nxx )
 
     wsq_y   <- sqrt(weight)*y
     resid_w <- wsq_y - X[ , null_dum3 ] %*% b
@@ -1778,15 +2108,6 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
   bse		  <- sqrt( diag( b_cov ) )
   nev		  <- length( ev )
-
-  pquant  <- c(0.01, 0.025, 0.05, seq(0.1,0.9,0.1), 0.95, 0.975, 0.99)
-  pq_dat0 <- NULL
-  for(pq in pquant){
-      pq_dat0<-cbind(pq_dat0,qnorm(pq,pred0,pred0_se))
-  }
-
-  pq_dat0       <- as.data.frame(pq_dat0)
-  names(pq_dat0)<- paste("q",pquant,sep="")
 
   b_vc_s0	  <- NULL
   b_vc_n0	  <- NULL
@@ -2012,7 +2333,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   np		  <- nxx + nsv2 * 2 + ng + nnxf2 + nnsv2 + 1 + tr_npar
 
   if( !is.null(weight) ){
-    loglik<-loglik + 0.5*sum( log( weight ))
+    loglik<-loglik + 0.5*sum( log( weight_lik ))########## check!!
     Xm_org    <- X_org[ , null_dum3 ]
     Xm_org[ , -( 1:nx ) ] <- t( t( Xm_org[ , -( 1:nx ) ] ) * eevSqrt )
   }
@@ -2176,142 +2497,165 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     s_nxconst<- bnf_par
   }
 
-  if( tr_num > 0 ){
-    if( y_nonneg==TRUE ){
-      tr_bpar0         <- tr_bpar
-      tr_bpar          <- data.frame(tr_bpar[1])
-      names(tr_bpar)   <- "Estimates"
-      rownames(tr_bpar)<- "Lambda (Box-Cox)"
-    } else {
-      tr_bpar0<-tr_bpar<-NULL
-    }
 
+
+  ################ pred_quantile
+  pquant        <- c(0.01, 0.025, 0.05, seq(0.1,0.9,0.1), 0.95, 0.975, 0.99)
+  pquant2       <- seq(0.001,0.999,0.001)
+
+  pq_dat0       <- NULL
+  for(pq in pquant){
+    pq_dat0     <- cbind(pq_dat0,qnorm(pq,pred0,pred0_se))
+  }
+  pq_dat0       <- as.data.frame(pq_dat0)
+  names(pq_dat0)<- paste("q",pquant,sep="")
+
+  if( y_nonneg==TRUE ){
+    tr_bpar          <- data.frame(tr_bpar[1])
+    names(tr_bpar)   <- "Estimates"
+    rownames(tr_bpar)<- "Lambda (Box-Cox)"
+  } else {
+    tr_bpar          <- NULL
+  }
+
+  if( tr_num > 0 ){
     z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,
-                      bc_par=tr_bpar0,jackup=jackup)
+                      bc_par=tr_bpar$Estimates,jackup=jackup,y_added2=y_added2)#
     z_ms     <- z0$z_ms
     y_ms     <- z0$y_ms
-
     dif      <- 1/d_sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,
-                          bc_par=tr_bpar0,y_ms=y_ms,z_ms=z_ms,jackup=jackup)
+                          bc_par=tr_bpar$Estimates,y_ms=y_ms,z_ms=z_ms,jackup=jackup)
     pred     <- i_sal_k(par=tr_par,y=pred0,k=tr_num,noconst_last=noconst_last,
-                        bc_par=tr_bpar0,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
+                        bc_par=tr_bpar$Estimates,y_ms=y_ms,z_ms=z_ms,jackup=jackup,y_added2=y_added2)
+    # - y_added,ulim=ulim
 
     pq_dat   <- pq_dat0
     for(pq in 1:ncol(pq_dat0)){
       ptest<-try(pq_pred<- i_sal_k(par=tr_par,y=pq_dat0[,pq],k=tr_num,noconst_last=noconst_last,
-                           bc_par=tr_bpar0,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added)
-      if(class(ptest)!="try-error"){
-        pq_dat[,pq]       <-pq_pred
+                                   bc_par=tr_bpar$Estimates,y_ms=y_ms,z_ms=z_ms,jackup=jackup,
+                                   y_added2=y_added2))#,  - y_added, ulim=ulim
+      if( !inherits(ptest, "try-error") ){#class(ptest)!="try-error"
+        pq_dat[,pq]     <- pq_pred
       } else {
-        pq_dat[,pq]       <-NA
+        pq_dat[,pq]     <- NA
       }
     }
 
-    min_s      <- min(y) - (max(y)-min(y))/10
-    max_s      <- max(y) + (max(y)-min(y))/10
+    min_s        <- min(y) - (max(y)-min(y))/10
+    max_s        <- max(y) + (max(y)-min(y))/10
     if( y_type == "continuous"){
-      pred     <- data.frame(pred = pred, pred_transG = pred0, pred_transG_se = pred0_se)
+      snorm       <- seq(min_s, max_s, len=100000)
+      snorm_d     <- dnorm( snorm )
+      snorm_tr    <- i_sal_k(par=tr_par,y=snorm,k=tr_num,noconst_last=noconst_last,
+                             bc_par=tr_bpar$Estimates,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added#, ulim=ulim,y_added2=y_added2
+      y_probfun00 <- cbind(snorm_tr,snorm_d)
+      y_probfun00 <- y_probfun00[is.finite(y_probfun00[,1]),]
+      y_prob_sk      <- y_probfun00
+      y_bin          <- seq(0.8*min(y0), 1.2*max(y0), len=1000)
+      suppressWarnings(approx_fun     <- approxfun(x=y_probfun00[,1],y=y_probfun00[,2], rule=2))
+      y_probfun      <- cbind( y_bin, approx_fun(y_bin))
+
+      pred        <- data.frame(pred = pred, pred_transG = pred0, pred_transG_se = pred0_se)
+
     } else if( y_type =="count" ){
-      pred     <- data.frame(pred = pred, pred_transG = pred0)
-    }
-    snorm       <- seq(min_s, max_s, len=100000)
-    snorm_d     <- dnorm( snorm )
-    snorm_tr    <- i_sal_k(par=tr_par,y=snorm,k=tr_num,noconst_last=noconst_last,
-                        bc_par=tr_bpar0,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
-    y_probfun00 <- cbind(snorm_tr,snorm_d)
-    y_probfun00 <- y_probfun00[is.finite(y_probfun00[,1]),]
+      snorm       <- seq(min_s, max_s, len=1000000)
+      snorm_d     <- dnorm( snorm )
+      snorm_d     <- c(pnorm( snorm )[1],diff(pnorm( snorm )))
 
-    if( y_type=="count"){
+      snorm_tr    <- i_sal_k(par=tr_par,y=snorm,k=tr_num,noconst_last=noconst_last,
+                             bc_par=tr_bpar$Estimates,y_ms=y_ms,z_ms=z_ms,jackup=jackup)# - y_added#,y_added2=y_added2
       if( !is.null(offset)){
-        y_probfun00[,1]<- round(median(offset)*exp(y_probfun00[,1]) )
+        snorm_tr_pred <- median( offset )*exp( snorm_tr )
+        snorm_tr      <- snorm_tr_pred * exp(- (1+0.5*zrat)/( snorm_tr_pred + 0.5 ) )
       } else {
-        y_probfun00[,1]<- round( exp(y_probfun00[,1]) )
+        snorm_tr_pred <- exp( snorm_tr )
+        snorm_tr      <- snorm_tr_pred * exp(- (1+0.5*zrat)/( snorm_tr_pred + 0.5) )
       }
+      y_probfun00 <- cbind( round( snorm_tr ), snorm_d )
+      y_probfun00 <- y_probfun00[is.finite(y_probfun00[,1]),]
 
-      y_bin          <- min( y_probfun00[,1] ):max( y_probfun00[,1] )
+      y_bin          <- min( y_probfun00[,1] ):min(max(y_org*1.5),max( y_probfun00[,1] ))
       y_probfun00_id <- get.knnx(y_bin,y_probfun00[,1],k=1)$nn.index
       y_bin2         <- y_bin[y_probfun00_id]
       y_probfun      <- aggregate(y_probfun00[,2],list(y_bin2),sum)
       y_probfun[,2]  <- y_probfun[,2]/sum(y_probfun[,2])
       y_prob_sk      <- y_probfun
-
       y_probfun      <- y_probfun[( y_probfun[,1] >= 0.8*min(y_org) )&( y_probfun[,1] <= 1.2*max(y_org) ),]
 
-    } else {
-      y_prob_sk      <- y_probfun00
-      y_bin          <- seq(0.8*min(y0), 1.2*max(y0), len=1000)
-      suppressWarnings(approx_fun     <- approxfun(x=y_probfun00[,1],y=y_probfun00[,2], rule=2))
-      y_probfun      <- cbind( y_bin, approx_fun(y_bin))
+      dif            <- dif*y_org
+      pq_dat         <- exp(pq_dat)
+      pred           <- data.frame(pred = exp(pred), pred_transG = pred0)
     }
 
   } else if( y_nonneg ==TRUE ){
-    y        <- bc(par=tr_bpar,y=y0,jackup=jackup)
+    y        <- bc(par=tr_bpar$Estimates,y=y0,jackup=jackup)# +
     z_ms     <- NULL
     y_ms     <- NULL
 
-    dif      <- 1 / ( d_bc(par=tr_bpar,y=y0,jackup=jackup) )
-    pred0b   <- pred0
-    pred     <- i_bc(par=tr_bpar,y=pred0b,jackup=jackup) - y_added
+    dif      <- 1 / ( d_bc(par=tr_bpar$Estimates,y=y0,jackup=jackup) )
+    pred     <- i_bc(par=tr_bpar$Estimates,y=pred0,jackup=jackup) - y_added# - y_added2,ulim=ulim
 
     pq_dat   <- pq_dat0
     for(pq in 1:ncol(pq_dat0)){
-      ptest<-try(pq_pred<- i_bc(par=tr_bpar,y=pq_dat0[,pq],jackup=jackup) - y_added)
-      if(class(ptest)!="try-error"){
+      ptest  <- try(suppressWarnings(pq_pred<- i_bc(par=tr_bpar$Estimates,y=pq_dat0[,pq],jackup=jackup) - y_added))#,ulim=ulim
+      if( !inherits(ptest, "try-error")){#class(ptest)!="try-error"
         pq_dat[,pq]       <-pq_pred
       } else {
         pq_dat[,pq]       <-NA
       }
     }
-
-    pred     <- data.frame(pred = pred, pred_transG = pred0, pred_transG_se=pred0_se)
 
     min_s     <- min(y) - (max(y)-min(y))/10
     max_s     <- max(y) + (max(y)-min(y))/10
     snorm     <- seq(min_s, max_s, len=10000)
     snorm_d   <- dnorm(snorm,mean=mean(y),sd=sd(y))
     tr_bpar00 <- tr_bpar
-    snorm_tr  <- i_bc(par=tr_bpar00,y=snorm,jackup=jackup) - y_added
+    snorm_tr     <- i_bc(par=tr_bpar00$Estimates,y=snorm,jackup=jackup)#exp(  - y_added
     y_probfun00  <- cbind(snorm_tr,snorm_d)
     y_probfun00  <- y_probfun00[is.finite(y_probfun00[,1]),]
-    y_prob_sk      <- y_probfun00
+    y_prob_sk    <- y_probfun00
 
-    suppressWarnings(approx_fun<- approxfun(x=y_probfun00[,1],y=y_probfun00[,2], rule=2))
-    y_bin     <- seq(max(0, 0.8*min(y0)), 1.2*max(y0), len=1000)
-    y_probfun <- cbind( y_bin, approx_fun(y_bin))
+    #suppressWarnings(approx_fun<- approxfun(x=y_probfun00[,1],y=y_probfun00[,2], rule=2))
+    #y_bin     <- seq(max(0, 0.8*min(y0)), 1.2*max(y0), len=1000)
+    #y_probfun <- cbind( y_bin, approx_fun(y_bin))
 
-    if(jackup==FALSE){
-      tr_bpar[2]<-0
-    }
-    tr_bpar<-data.frame(tr_bpar[1])
-    names(tr_bpar)   <- "Estimates"
-    rownames(tr_bpar)<- "Lambda (Box-Cox)"
-    tr_par   <- NULL
+    y_bin          <- seq(0.8*min(y0), 1.2*max(y0), len=1000)
+    suppressWarnings(approx_fun     <- approxfun(x=y_probfun00[,1],y=y_probfun00[,2], rule=2))
+    y_probfun      <- cbind( y_bin, approx_fun(y_bin))
+
+    pred        <- data.frame(pred = pred, pred_transG = pred0, pred_transG_se = pred0_se)
 
   } else {
-    dif      <- 1
-    z_ms     <- NULL
-    y_ms     <- NULL
-    min_s    <- min(y) - (max(y)-min(y))/10
-    max_s    <- max(y) + (max(y)-min(y))/10
-    pq_dat   <- pq_dat0
+    dif          <- 1
+    z_ms         <- NULL
+    y_ms         <- NULL
+    tr_par       <- NULL
+    tr_bpar      <- NULL
+    min_s        <- min(y) - (max(y)-min(y))/10
+    max_s        <- max(y) + (max(y)-min(y))/10
     if( y_type == "continuous" ){
+      pq_dat   <- pq_dat0
       pred     <- data.frame(pred = pred0, pred_se=pred0_se)
       snorm    <- seq(min_s, max_s, len=10000)
     } else if( y_type == "count" ){
-      pred     <- data.frame(pred = pred0 )
-      snorm    <- seq(min_s, max_s, len=100000)
+      dif      <- dif*y_org
+      pq_dat   <- exp( pq_dat0 )
+      pred     <- data.frame(pred =exp( pred0 ), pred_transG = pred0 )
+      snorm    <- seq(min_s, max_s, len=1000000)
     }
-    tr_par   <- NULL
-    tr_bpar  <- NULL
 
     snorm_d  <- dnorm(snorm,mean=mean(pred0),sd=sd(pred0))
-
     if( y_type=="count" ){
+
       if( !is.null(offset)){
-        snorm_tr     <- round(median(offset)*exp(snorm))
+        snorm_tr_pred <- median( offset )*exp( snorm )
+        snorm_tr      <- snorm_tr_pred * exp(- (1+0.5*zrat)/( snorm_tr_pred + 0.5 ) )
       } else {
-        snorm_tr     <- round(exp(snorm))
+        snorm_tr_pred <- exp( snorm )
+        snorm_tr      <- snorm_tr_pred * exp(- (1+0.5*zrat)/( snorm_tr_pred + 0.5) )
       }
+
+      y_probfun   <- cbind( round( snorm_tr ), snorm_d )
       y_probfun    <- cbind(snorm_tr,snorm_d)
       y_probfun00  <- y_probfun[is.finite(y_probfun[,1]),]
       y_bin        <- min( y_probfun00[,1] ):max( y_probfun00[,1] )
@@ -2360,15 +2704,12 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   }
 
   if( y_type=="count" ){
-    pred[,1]   <-exp(pred[,1])
-    pred_naive <-pred[,1]
-    pq_dat     <-exp(pq_dat)
-
     if( !is.null( offset )) {
       pred[,1] <-pred[,1]*offset
-      pq_dat   <-pq_dat*offset
+      pq_dat   <-round(pq_dat*offset)
+    } else {
+      pq_dat   <-round(pq_dat)
     }
-    dif        <-dif*pred[,1]
   }
 
   if( y_type=="continuous" ){
@@ -2409,43 +2750,24 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     e_stat_NULL  <- list(NULL)
     e_stat_NULL[[1]]<- e_stat_N
     e_stat_NULL[[2]]<- mod_NULL_id
+    r2_devrat<-r2
 
   } else {
-    nz_dum    <- (y_org > 0) & ( pred[,1] > 0)
-    pred_dev  <- predict(lm(y~1, weights = y_org + 0.5 ))
-    pred_devex<- exp(pred_dev)
-    if( !is.null( offset )) pred_devex <- pred_devex * offset
-    y_p       <- pred_dev + (y_org - pred_devex )/pred_devex
-    pred_null <- predict(lm(y_p ~ 1, weights = pred_devex ))
-    if( !is.null( offset )) pred_null <- exp(pred_null) * offset
-
-    pred_nmean<- mean( pred_naive[nz_dum] )
-    if( !is.null( offset )) pred_nmean <- pred_nmean * offset
-    dev0      <- 2*sum(y_org[nz_dum]*log(y_org[nz_dum]/pred_nmean )) - 2*sum(y_org - pred_nmean)
-    dev1      <- 2*sum(y_org[nz_dum]*log(y_org[nz_dum]/pred[nz_dum,1])) - 2*sum(y_org - pred[,1])
-    dev_rat   <- (sum( dev0 ) - sum( dev1 ))/sum( dev0 )
-    dev_rat   <- ifelse( dev_rat < 0, 0, dev_rat)
-
-    ### An approximate likelihood (See Doran et al., 2007)
-    #loglik_count<- -(1/2)*(dev1 + term1[1] + sum(b0[-(1:nx)]^2))
-    #AIC_count	  <- -2 * loglik_count + np * 2
-    #BIC_count	  <- -2 * loglik_count + np * log( n )
-
     lik_nam2  <- paste( "Gaussian ",lik_nam, " approximating the model",sep="")
-    if( tr_num==0 ){
-      e_stat		<- data.frame( stat = c( sig_org, 100*dev_rat, loglik, AIC, BIC ) )
-      rownames( e_stat ) <- c("dispersion parameter","deviance explained (%)", lik_nam2, "AIC", "BIC")
-    } else {
-      e_stat		<- data.frame( stat = c( 100*dev_rat, loglik, AIC, BIC ) )
-      rownames( e_stat ) <- c("deviance explained (%)", lik_nam2, "AIC", "BIC")
-    }
+    #if( tr_num==0 & y_nonneg==FALSE ){
+    #  e_stat		<- data.frame( stat = c( sig_org, rmse, 100*dev_rat, loglik, AIC, BIC ) )
+    #  rownames( e_stat ) <- c( "dispersion parameter","RMSE","deviance explained (%)", lik_nam2, "AIC", "BIC")
+    #} else {
+    e_stat		<- data.frame( stat = c( rmse, 100*dev_rat, loglik, AIC, BIC ) )
+    rownames( e_stat ) <- c("RMSE","deviance explained (%)", lik_nam2, "AIC", "BIC")
+    #}
 
     ######################## Approximate Gaussian likelihood for the NULL model
     if( is.null(offset) ){
-      y_org2   <- log( y_org + 0.5) - (1 + 0.5*zrat)/( y_org + 0.5 )
+      y_org2   <- log( y_org + 0.5) + y_added2
       mod_NULL_id0<-", family = poisson )"
     } else {
-      y_org2<- log( ( y_org+0.5 )/offset ) - (1 + 0.5*zrat)/( y_org + 0.5 )
+      y_org2<- log( ( y_org+0.5 )/offset ) +y_added2
       mod_NULL_id0<-", offset = log( offset ), family = poisson )"
     }
 
@@ -2454,20 +2776,20 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     }
 
     if( is.null( x ) & is.null( xconst ) ){
-      mod_NULL   <- lm(y_org2 ~ 1, weights = weight )
+      mod_NULL   <- lm(y_org2 ~ 1, weights = weight_lik )
       mod_NULL_id<- paste("glm( y ~ 1", mod_NULL_id0, sep="")
     } else if( is.null( x ) ){
-      mod_NULL   <- lm(y_org2 ~ as.matrix( xconst ), weights = weight )
+      mod_NULL   <- lm(y_org2 ~ as.matrix( xconst ), weights = weight_lik )
       if( resf_flag ){
         mod_NULL_id<- paste("glm( y ~ x", mod_NULL_id0, sep="")
       } else {
         mod_NULL_id<- paste("glm( y ~ xconst", mod_NULL_id0, sep="")
       }
     } else if( is.null( xconst ) ){
-      mod_NULL   <- lm(y_org2 ~ as.matrix( x )     , weights = weight )
+      mod_NULL   <- lm(y_org2 ~ as.matrix( x )     , weights = weight_lik )
       mod_NULL_id<- paste("glm( y ~ x", mod_NULL_id0, sep="")
     } else {
-      mod_NULL   <- lm(y_org2 ~ as.matrix( x ) + as.matrix( xconst ), weights = weight )
+      mod_NULL   <- lm(y_org2 ~ as.matrix( x ) + as.matrix( xconst ), weights = weight_lik )
       mod_NULL_id<- paste("glm( y ~ x + xconst", mod_NULL_id0, sep="")
     }
 
@@ -2477,35 +2799,42 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     e_stat_NULL  <- list(NULL)
     e_stat_NULL[[1]]<- e_stat_N
     e_stat_NULL[[2]]<- mod_NULL_id
+
+    r2_devrat<-dev_rat0
   }
 
   messs   <- 0
   if( sum( n_omit ) > 5 ) {
-    if( r2 > -0.2 ){
-      message( "Note: The model is nearly singular. Consider simplifying the model" )
+    if(y_type=="count" & r2_devrat <= 0 ){
+      message( "Note: Singular fit. Simplify the model")
     } else {
-      message( "Note: Singular fit. Simplify the model (dummy variable in x is a typical cause)")
+      if( r2_devrat > -0.2 ){
+        message( "Note: The model is nearly singular. Consider simplifying the model" )
+      } else {
+        message( "Note: Singular fit. Simplify the model")
+      }
+      messs <- 1
     }
+
+  } else if( y_type=="continuous" & r2_devrat < -0.2 ){
+    message("Note: Singular fit. Simplify the model")
     messs <- 1
-  } else if( r2 < -0.2 ){
-    message("Note: Singular fit. Simplify the model (dummy variable in x is a typical cause)")
+  } else if( y_type=="count" & r2_devrat <= 0 ){
+    message("Note: Singular fit. Simplify the model")
     messs <- 1
-  }# else if( y_type=="count" ){
-  #  if( dev_rat < 0 ) message("Note: Singular fit. Simplify the model (dummy variable in x is a typical cause)")
-  #  messs <- 1
-  #}
+  }
 
   if( (messs == 0)&( loglik < logLik( mod_NULL )) ){
     message( "Note: The model is nearly singular. Consider simplifying the model")
   }
 
   other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nx=nx, nxf = nxf, xf_id = xf_id, df = df,null_dum3=null_dum3,
-                  b_s = bb, b_covs = bb_cov, B_covs = b_cov2, sig = sig, xg_levels = xg_levels, is_weight = !is.null( weight ),eevSqrt=eevSqrt,
-                  evSqrts = evSqrts, evSqrts_n = evSqrts_n, evSqrts_c = evSqrts_c, model = "resf_vc", b_c = bf_s, b_covs_c = bf_covs,
+                  b_s = bb, b_covs = bb_cov, B_covs = b_cov2, sig = sig, sig_org=sig_org ,xg_levels = xg_levels, is_weight = !is.null( weight ),
+                  eevSqrt=eevSqrt, evSqrts = evSqrts, evSqrts_n = evSqrts_n, evSqrts_c = evSqrts_c, model = "resf_vc", b_c = bf_s, b_covs_c = bf_covs,
                   Bias=Bias, nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num, sel_basis_c = sel_basis_c, sel_basis_n = sel_basis_n,
                   x = x, xconst = xconst, coords = meig$other$coords, dif=dif, y = y0, tr_num=tr_num, y_nonneg = y_nonneg, y_type = y_type,
                   method=method, y_added = y_added, jackup=jackup, np=np, offset = offset, e_NULL = e_stat_NULL,
-                  w_scale = w_scale)
+                  w_scale = w_scale,tr_comp=tr_comp)
 
   result    <- list( b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc, B_vc_s = B_vc_s, B_vc_n = B_vc_n,
                      c = b_par, c_vc = bf_vc, cse_vc = bfse_vc, ct_vc = bft_vc, cp_vc = bfp_vc, b_g = bpar_g2,
@@ -2576,8 +2905,10 @@ print.resf_vc <- function(x, ...)
   if( !is.null(x$skew_kurt)|!is.null(x$tr_bpar) ){
     cat("\n----Estimated probability distribution of y--------------\n")
     if( !is.null(x$skew_kurt) ) print(x$skew_kurt)
-    if( !is.null(x$tr_bpar) ){
+    if( !is.null(x$tr_bpar) & x$other$y_type =="continuous" ){
       cat( paste("(Box-Cox parameter: ", format(x$tr_bpar[1], digits=7),")\n",sep="") )
+    } else if( x$other$y_type =="count" ){
+      cat( paste("(dispersion parameter: ", format(x$other$sig_org, digits=7),")\n",sep="") )
     }
   }
 

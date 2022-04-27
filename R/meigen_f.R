@@ -24,7 +24,7 @@ meigen_f	<- function( coords, model = "exp", enum = 200, s_id = NULL ){
     	result$other$evk	<- NULL
 
     } else {
-    	coordk	<- kmeans( coords, centers = enum + 1 )$centers
+      suppressWarnings(coordk	<- kmeans( coords, centers = enum + 1 )$centers)
     	D	<- rdist( coordk )
     	h	<- max( spantree( D )$dist )
     	if( model == "exp" ){

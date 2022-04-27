@@ -2,7 +2,8 @@
 plot_n <- function( mod, xnum = 1, xtype = "x", cex.lab = 20,
                     cex.axis = 15, lwd = 1.5, ylim = NULL, nmax = 20000 ){
 
-  if( (class(mod) == "resf_vc")|(class(mod) == "besf_vc") ){
+  #if( (class(mod) == "resf_vc")|(class(mod) == "besf_vc") ){
+  if( inherits( mod, "resf_vc")|inherits( mod, "besf_vc" ) ){
 
     if( ( xtype == "x" )&!is.null(mod$c_vc)&is.null(mod$B_vc_n)){
       xtype <- "xconst"
@@ -26,7 +27,8 @@ plot_n <- function( mod, xnum = 1, xtype = "x", cex.lab = 20,
       Covariate<-as.matrix( mod$other$xconst )[, xnum_x]
 
     }
-  } else if( (class(mod) == "resf")|(class(mod) == "besf") ){
+  #} else if( (class(mod) == "resf")|(class(mod) == "besf") ){
+  } else if( inherits( mod, "resf")|inherits( mod, "besf") ){
     bvc   <- list( mod$c_vc, mod$cse_vc )
     xnum_b <- xnum
     xnum_x <- xnum

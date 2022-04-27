@@ -4,7 +4,8 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
 
   pmax0      <- pmax
   xnum       <- xnum + 1
-  if( (class(mod) == "resf_vc")|(class(mod) == "besf_vc") ){
+  #if( (class(mod) == "resf_vc")|(class(mod) == "besf_vc") ){
+  if( inherits(mod, "resf_vc")|inherits(mod, "besf_vc") ){
 
     if( xtype == "xconst" ){
       xnum   <- xnum - 1
@@ -27,7 +28,8 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
       names(dd)<-c("px","py",xname,paste(xname,"_p",sep=""))
     }
 
-  } else if( (class(mod) == "esf")|(class(mod) == "resf")|(class(mod) == "besf") ){
+  } else if( inherits(mod, "esf" )|inherits(mod, "resf" )|inherits( mod, "besf" ) ){
+  #} else if( (class(mod) == "esf")|(class(mod) == "resf")|(class(mod) == "besf") ){
     if( ( (xnum >1)|(btype=="nvc") )&( !is.null( mod$c_vc[1,1] ) ) ){
       dd     <- data.frame(coords = mod$other$coords,b_vc = mod$c_vc, p_vc = mod$cp_vc )
       xnum   <- xnum - 1
@@ -87,7 +89,7 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
   } else {
     test<-try(pp  <-spplot( dd[dd@data[,nx + xnum] < pmax,], xnum, colorkey=TRUE, cex=cex, col.regions = palette,
             cuts = cols, col = "transparent",xlim=xlim, ylim=ylim,main=names(dd)[xnum]),silent=TRUE)
-    if( class(test)=="try-error" ){
+    if( inherits( test, "try-error" ) ){#class(test)=="try-error"
       names(dd)[xnum]<-paste( "x", xnum, sep = "" )
       pp  <-spplot( dd[dd@data[,nx + xnum] < pmax,], xnum, colorkey=TRUE, cex=cex, col.regions = palette,
                               cuts = cols, col = "transparent",xlim=xlim, ylim=ylim,main=names(dd)[xnum])
