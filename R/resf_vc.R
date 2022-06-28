@@ -836,6 +836,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     y_nonneg <- nongauss$y_nonneg
     if( y_nonneg ){
       if( min( y ) < 0 ) stop(" y must be non-negative when y_nonneg = TRUE")
+      bc_value<- NULL
     }
 
   } else {
@@ -943,9 +944,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     lik_nam	<- "logLik"
   }
 
-  if( n > 150000 ){
-    message( paste( "Note: besf_vc function is available for large samples. see help(besf_vc)" ) )
-  }
+  #if( n > 150000 ){
+  #  message( paste( "Note: besf_vc function is available for large samples. see help(besf_vc)" ) )
+  #}
 
   if(is.null(xconst)) nvc_xconst <- FALSE
 
@@ -1252,7 +1253,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       m0   <- X0
     }
     cv_init<-lm_cw(y=y0, M=Mo, Minv=Moinv,m0=m0,k=tr_num,noconst_last=noconst_last,
-                   y_nonneg=y_nonneg,jackup=jackup, weight = weight, plim=plim, bc_value=bc_value,
+                   y_nonneg=y_nonneg,jackup=jackup, weight = weight, plim=plim,#, bc_value=bc_value
                    y_added2=y_added2)
     y      <-cv_init$z
     tr_par <-cv_init$vpar[1:tr_num]
@@ -2779,17 +2780,21 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       mod_NULL   <- lm(y_org2 ~ 1, weights = weight_lik )
       mod_NULL_id<- paste("glm( y ~ 1", mod_NULL_id0, sep="")
     } else if( is.null( x ) ){
-      mod_NULL   <- lm(y_org2 ~ as.matrix( xconst ), weights = weight_lik )
+      lm_dat     <- data.frame(y_org2, xconst)
+      mod_NULL   <- lm(y_org2 ~ ., data=lm_dat, weights = weight_lik )
+      #mod_NULL   <- lm(y_org2 ~ as.matrix( xconst ), weights = weight_lik )
       if( resf_flag ){
         mod_NULL_id<- paste("glm( y ~ x", mod_NULL_id0, sep="")
       } else {
         mod_NULL_id<- paste("glm( y ~ xconst", mod_NULL_id0, sep="")
       }
     } else if( is.null( xconst ) ){
-      mod_NULL   <- lm(y_org2 ~ as.matrix( x )     , weights = weight_lik )
+      lm_dat     <- data.frame(y_org2, x)
+      mod_NULL   <- lm(y_org2 ~ ., data=lm_dat, weights = weight_lik )
       mod_NULL_id<- paste("glm( y ~ x", mod_NULL_id0, sep="")
     } else {
-      mod_NULL   <- lm(y_org2 ~ as.matrix( x ) + as.matrix( xconst ), weights = weight_lik )
+      lm_dat     <- data.frame(y_org2, x, xconst)
+      mod_NULL   <- lm(y_org2 ~ ., weights = weight_lik )
       mod_NULL_id<- paste("glm( y ~ x + xconst", mod_NULL_id0, sep="")
     }
 
@@ -2805,28 +2810,28 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
   messs   <- 0
   if( sum( n_omit ) > 5 ) {
-    if(y_type=="count" & r2_devrat <= 0 ){
+    if(y_type=="count" & r2_devrat <= -0.1 ){
       message( "Note: Singular fit. Simplify the model")
     } else {
-      if( r2_devrat > -0.2 ){
-        message( "Note: The model is nearly singular. Consider simplifying the model" )
-      } else {
+      if( r2_devrat <= -0.1 ){
+      #  message( "Note: The model is nearly singular. Consider simplifying the model" )
+      #} else {
         message( "Note: Singular fit. Simplify the model")
       }
       messs <- 1
     }
 
-  } else if( y_type=="continuous" & r2_devrat < -0.2 ){
+  } else if( y_type=="continuous" & r2_devrat < -0.1 ){
     message("Note: Singular fit. Simplify the model")
     messs <- 1
-  } else if( y_type=="count" & r2_devrat <= 0 ){
+  } else if( y_type=="count" & r2_devrat <= -0.1 ){
     message("Note: Singular fit. Simplify the model")
     messs <- 1
   }
 
-  if( (messs == 0)&( loglik < logLik( mod_NULL )) ){
-    message( "Note: The model is nearly singular. Consider simplifying the model")
-  }
+  #if( (messs == 0)&( loglik < logLik( mod_NULL )) ){
+  #  message( "Note: The model is nearly singular. Consider simplifying the model")
+  #}
 
   other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nx=nx, nxf = nxf, xf_id = xf_id, df = df,null_dum3=null_dum3,
                   b_s = bb, b_covs = bb_cov, B_covs = b_cov2, sig = sig, sig_org=sig_org ,xg_levels = xg_levels, is_weight = !is.null( weight ),

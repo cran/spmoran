@@ -124,10 +124,10 @@ plot_s(res,2) # 2nd SVC
 
 #res5	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_nvc =TRUE, xconst_nvc=TRUE)
 #plot_s(res5,0)            # Spatially varying intercept
-#plot_s(res5,2)            # Spatial plot of the SNVC (SVC + NVC) on x[,2]
-#plot_s(res5,2,btype="svc")# Spatial plot of SVC in the SNVC
-#plot_s(res5,2,btype="nvc")# Spatial plot of NVC in the SNVC
-#plot_n(res5,2)            # 1D plot of the NVC
+#plot_s(res5,1)            # Spatial plot of the SNVC (SVC + NVC) on x[,1]
+#plot_s(res5,1,btype="svc")# Spatial plot of SVC in the SNVC
+#plot_s(res5,1,btype="nvc")# Spatial plot of NVC in the SNVC
+#plot_n(res5,1)            # 1D plot of the NVC
 
 #plot_s(res5,6,xtype="xconst")# Spatial plot of the NVC on xconst[,6]
 #plot_n(res5,6,xtype="xconst")# 1D plot of the NVC on xconst[,6]

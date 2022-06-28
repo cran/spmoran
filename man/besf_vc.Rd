@@ -72,20 +72,6 @@ Daisuke Murakami
 \examples{
 require(spdep)
 data(boston)
-y	<- boston.c[, "CMEDV"]
-x       <- boston.c[,c("ZN", "INDUS" ,"LSTAT")]
-xconst  <- boston.c[,c("CRIM", "NOX", "CHAS", "AGE", "DIS", "RAD", "TAX", "PTRATIO", "B", "RM" )]
-coords  <- boston.c[,c("LAT","LON")]
-
-######## SVC model
-# res	  <- besf_vc(y=y,x=x,xconst=xconst,coords=coords)
-
-######## SNVC model
-# res2	<- besf_vc(y=y,x=x,xconst=xconst,coords=coords,x_nvc=TRUE)
-
-
-require(spdep)
-data(boston)
 y	      <- boston.c[, "CMEDV"]
 x       <- boston.c[,c("CRIM", "AGE")]
 xconst  <- boston.c[,c("ZN","DIS","RAD","NOX",  "TAX","RM", "PTRATIO", "B")]
@@ -120,10 +106,10 @@ coords  <- boston.c[,c("LON", "LAT")]
 ######## - NVC or Constant coefficients on xconst
 
 #res5	  <- besf_vc(y=y,x=x,xconst=xconst,coords=coords, x_nvc =TRUE, xconst_nvc=TRUE)
-#plot_s(res5,0)           # Spatially varying intercept
-#plot_s(res5,1)           # 1st SNVC
-#plot_s(res5,1,snvc=FALSE)# SVC in the 1st SNVC
-#plot_n(res5,1,xtype="x") # NVC in the 1st NVC
+#plot_s(res5,0)            # Spatially varying intercept
+#plot_s(res5,1)            # 1st SNVC (SVC + NVC)
+#plot_s(res5,1,btype="svc")# SVC in the 1st SNVC
+#plot_n(res5,1,xtype="x")  # NVC in the 1st NVC
 #plot_n(res5,6,xtype="xconst")
 
 
