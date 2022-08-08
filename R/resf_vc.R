@@ -1862,6 +1862,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         }
         tr_comp <- sum( log(d_bc(par=tr_bpar,y=y0,jackup=jackup)) )
         y       <- bc(par=tr_bpar, y=y0,jackup=jackup ) + y_added2
+        y_ms    <- c(mean(y),sd(y))
+        y       <- (y-y_ms[1])/y_ms[2]
 
         if( !is.null(weight) ) {
           w_y <- weight * y
@@ -2473,9 +2475,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     names( bn_par )	<- xxname
     s_n    <- bn_par
 
-    totv   <-as.vector(sf_par[1,]+c(0,s_n))
-    s_rat  <-as.vector(sf_par[1,])/totv
-    n_rat  <-as.vector(c(0,s_n))/totv
+    totv   <-c(t(sf_par[1,]+c(0,s_n)))#as.vector(sf_par[1,]+c(0,s_n))
+    s_rat  <-c(c(t(sf_par[1,]))/totv)#as.vector(sf_par[1,])/totv
+    n_rat  <-c(c(0,t(s_n))/totv)#as.vector(c(0,s_n))/totv
     s_rat[totv==0]<-NA;n_rat[totv==0]<-NA
     sn_rat <-data.frame(rbind(s_rat,n_rat))
     rownames(sn_rat)<-c("Share (Spatial)","Share (Non-spatial)")
@@ -2589,16 +2591,18 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     }
 
   } else if( y_nonneg ==TRUE ){
-    y        <- bc(par=tr_bpar$Estimates,y=y0,jackup=jackup)# +
+    y        <- bc(par=tr_bpar$Estimates,y=y0,jackup=jackup)
     z_ms     <- NULL
-    y_ms     <- NULL
+    y_ms    <- c(mean(y),sd(y))
 
-    dif      <- 1 / ( d_bc(par=tr_bpar$Estimates,y=y0,jackup=jackup) )
+    dif      <- 1 / ( d_bc(par=tr_bpar$Estimates,y=y0,jackup=jackup)*d_sc(par=y_ms,y) )### changed 2022/08
+    pred0    <- pred0*y_ms[2] + y_ms[1]
     pred     <- i_bc(par=tr_bpar$Estimates,y=pred0,jackup=jackup) - y_added# - y_added2,ulim=ulim
 
     pq_dat   <- pq_dat0
     for(pq in 1:ncol(pq_dat0)){
-      ptest  <- try(suppressWarnings(pq_pred<- i_bc(par=tr_bpar$Estimates,y=pq_dat0[,pq],jackup=jackup) - y_added))#,ulim=ulim
+      ptest  <- try(suppressWarnings(pq_pred<- i_bc(par=tr_bpar$Estimates,
+                    y=pq_dat0[,pq]*y_ms[2] + y_ms[1],jackup=jackup) - y_added))#,ulim=ulim
       if( !inherits(ptest, "try-error")){#class(ptest)!="try-error"
         pq_dat[,pq]       <-pq_pred
       } else {
@@ -2715,7 +2719,12 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
   if( y_type=="continuous" ){
     e_stat		 <- data.frame( stat = c( sqrt( sig_org ), r2, loglik, AIC, BIC ) )
-    rownames( e_stat ) <- c( "resid_SE", "adjR2(cond)", lik_nam, "AIC", "BIC")
+
+    if( y_nonneg ==FALSE & tr_num ==0 ){
+      rownames( e_stat ) <- c( "resid_SE", "adjR2(cond)", lik_nam, "AIC", "BIC")
+    } else {
+      rownames( e_stat ) <- c( "resid_SE(trans)", "adjR2(cond)", lik_nam, "AIC", "BIC")
+    }
 
     ######################## Approximate inference for the NULL model
     if( is.null( weight ) ){
@@ -2794,7 +2803,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       mod_NULL_id<- paste("glm( y ~ x", mod_NULL_id0, sep="")
     } else {
       lm_dat     <- data.frame(y_org2, x, xconst)
-      mod_NULL   <- lm(y_org2 ~ ., weights = weight_lik )
+      mod_NULL   <- lm(y_org2 ~ ., data=lm_dat, weights = weight_lik )
       mod_NULL_id<- paste("glm( y ~ x + xconst", mod_NULL_id0, sep="")
     }
 
@@ -2814,8 +2823,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       message( "Note: Singular fit. Simplify the model")
     } else {
       if( r2_devrat <= -0.1 ){
-      #  message( "Note: The model is nearly singular. Consider simplifying the model" )
-      #} else {
+        #  message( "Note: The model is nearly singular. Consider simplifying the model" )
+        #} else {
         message( "Note: Singular fit. Simplify the model")
       }
       messs <- 1
@@ -2940,10 +2949,10 @@ print.resf_vc <- function(x, ...)
               format(AIC_NULL,digits=7), ",  BIC: ", format(BIC_NULL,digits=7)," )\n",sep=""))
   }
 
-  #if( (x$other$method=="reml")&(x$other$y_type=="continuous") ){
-  #  cat('\nNote: The AIC and BIC values are based on the restricted likelihood.')
-  #  cat('\n      Use method ="ml" for comparison of models with different fixed effects (x and xconst)\n')
-  #}
+  if( (x$other$method=="reml")&(x$other$y_type=="continuous") ){
+    cat('\nNote: AIC and BIC are based on the restricted/marginal likelihood.')
+    cat('\n      Use method="ml" for comparison of models with different fixed effects (x and xconst)\n')
+  }
   #if(x$other$y_type=="count"){
   #  cat('\nNote: Error statistics of the log-Gaussian model used to approximate')
   #  cat('\n      the Poisson model are available from other$e_stat_logG\n')

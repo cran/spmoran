@@ -3,7 +3,7 @@
 \title{Spatial predictions for explained variables and spatially varying coefficients}
 \usage{
 predict0_vc( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
-             offset0 = NULL, weight0 = NULL, compute_quantile = FALSE )
+             offset0 = NULL, weight0 = NULL, compute_se=FALSE, compute_quantile = FALSE )
 }
 \description{
 This function predicts explained variables and spatially and non-spatially varying coefficients. The Nystrom extension is used to perform a prediction minimizing the expected prediction error
@@ -15,7 +15,8 @@ This function predicts explained variables and spatially and non-spatially varyi
 \item{xgroup0}{Matrix of group indeces that may be group IDs (integers) or group names (N_0 x K_{group}). Default is NULL}
 \item{xconst0}{Matrix of explanatory variables at predicted sites whose coefficients are assumed constant (or NVC) across space (N_0 x K_const). Default is NULL}
 \item{offset0}{Vector of offset variables at predicted sites (N x 1). Available if y is count (see \code{\link{nongauss_y}}). Default is NULL}
-\item{weight0}{Vector of weights for predicted sites (N_0 x 1). Required if compute_quantile = TRUE}
+\item{weight0}{Vector of weights for predicted sites (N_0 x 1). Required if compute_se = TRUE or compute_quantile = TRUE}
+\item{compute_se}{If TRUE, predictive standard error is evaulated. It is currently supported only for continuous variables. If nongauss is specified in mod, standard error for the transformed y is evaluated. Default is FALSE}
 \item{compute_quantile}{If TRUE, Matrix of the quantiles for the predicted values (N x 15) is evaulated. Default is FALSE}
 }
 \value{
@@ -51,6 +52,7 @@ xconst  <- d[,c("CRIM", "NOX", "AGE", "DIS", "RAD", "TAX", "PTRATIO", "B", "RM")
 coords  <- d[,c("LON", "LAT")]
 
 d0      <- boston.c[-samp, ]    ## Data at unobserved sites
+y0      <- d0[, "CMEDV"]
 x0      <- d0[,c("ZN", "LSTAT")]
 xconst0 <- d0[,c("CRIM", "NOX", "AGE", "DIS", "RAD", "TAX", "PTRATIO", "B", "RM")]
 coords0 <- d0[,c("LON", "LAT")]
@@ -69,6 +71,8 @@ pred0$bse_vc[1:10,]# Predicted standard errors of the SVCs
 pred0$t_vc[1:10,]  # Predicted t-values of the SNVCs
 pred0$p_vc[1:10,]  # Predicted p-values of the SNVCs
 
+plot(y0,pred0$pred[,1]);abline(0,1)
+
 ############ or spatial prediction of spatially varying coefficients only
 # pred00  <- predict0_vc( mod = mod, meig0 = meig0 )
 # pred00$b_vc[1:10,]
@@ -84,5 +88,6 @@ pred0$p_vc[1:10,]  # Predicted p-values of the SNVCs
 # pred02$bse_vc[1:10,]# Predicted standard errors of the SNVCs
 # pred02$t_vc[1:10,]  # Predicted t-values of the SNVCs
 # pred02$p_vc[1:10,]  # Predicted p-values of the SNVCs
+# plot(y0,pred02$pred[,1]);abline(0,1)
 
 }

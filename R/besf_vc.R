@@ -1326,9 +1326,9 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     names( bn_par )	<- xxname
     s_n    <- bn_par
 
-    totv   <-as.vector(sf_par[1,]+c(0,s_n))
-    s_rat  <-as.vector(sf_par[1,])/totv
-    n_rat  <-as.vector(c(0,s_n))/totv
+    totv   <-c(t(sf_par[1,]+c(0,s_n)))#as.vector(sf_par[1,]+c(0,s_n))
+    s_rat  <-c(c(t(sf_par[1,]))/totv)#as.vector(sf_par[1,])/totv
+    n_rat  <-c(c(0,t(s_n))/totv)#as.vector(c(0,s_n))/totv
     s_rat[totv==0]<-NA;n_rat[totv==0]<-NA
     sn_rat <-data.frame(rbind(s_rat,n_rat))
     rownames(sn_rat)<-c("Share (Spatial)","Share (Non-spatial)")
@@ -1433,8 +1433,8 @@ print.besf_vc <- function(x, ...)
   cat("\n----Error statistics-------------------------------------\n")
   print(x$e)
   if( x$other$method=="reml"){
-    cat('\nNote: The AIC and BIC values are based on the restricted likelihood.')
-    cat('\n      Use method ="ml" for comparison of models with different fixed effects (x and xconst)\n')
+    cat('\nNote: AIC and BIC are based on the restricted/marginal likelihood.')
+    cat('\n      Use method="ml" for comparison of models with different fixed effects (x and xconst)\n')
   }
   invisible(x)
 }

@@ -3,7 +3,7 @@
 \title{Spatial predictions}
 \usage{
 predict0( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
-weight0 = NULL, compute_quantile = FALSE )
+weight0 = NULL, compute_se=FALSE, compute_quantile = FALSE )
 }
 \description{
 This function predicts explained variables using eigenvector spatial filtering (ESF) or random effects ESF. The Nystrom extension is used to perform a prediction minimizing the expected prediction error
@@ -14,7 +14,8 @@ This function predicts explained variables using eigenvector spatial filtering (
 \item{x0}{Matrix of explanatory variables at predicted sites (N_0 x K). Default is NULL}
 \item{xgroup0}{Matrix of group IDs that may be group IDs (integers) or group names (N_0 x K_{group}). Default is NULL}
 \item{offset0}{Vector of offset variables at predicted sites (N_0 x 1). Effective if y is count (see \code{\link{nongauss_y}}). Default is NULL}
-\item{weight0}{Vector of weights for predicted sites (N_0 x 1). Required if compute_quantile = TRUE}
+\item{weight0}{Vector of weights for predicted sites (N_0 x 1). Required if compute_se = TRUE or compute_quantile = TRUE}
+\item{compute_se}{If TRUE, predictive standard error is evaulated. It is currently supported only for continuous variables. If nongauss is specified in mod, standard error for the transformed y is evaluated. Default is FALSE}
 \item{compute_quantile}{If TRUE, Matrix of the quantiles for the predicted values (N x 15) is evaulated. It is currently supported only for continuous variables. Default is FALSE}
 }
 \value{

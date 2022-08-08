@@ -7,7 +7,7 @@ resf( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
       method = "reml", penalty = "bic", nongauss = NULL )
 }
 \description{
-This model estimates regression coefficients, coefficients varying depending on x (non-spatially varying coefficients; NVC), group effects, and residual spatial dependence. The random-effects eigenvector spatial filtering, which is an approximate Gaussian process approach, is used for modeling the spatial dependence. This function is available for modeling Gaussian and non-Gaussian data including continuous and count data (see \code{\link{nongauss_y}}).
+This model estimates regression coefficients, coefficients varying depending on x (non-spatially varying coefficients; NVC), group effects, and residual spatial dependence. The random-effects eigenvector spatial filtering, which is an approximate Gaussian process approach, is used for modeling the spatial dependence. The explained variables are transformed to fit the data distribution if nongauss is specified. Thus, this function is available for modeling Gaussian and non-Gaussian continuous data and count data (see \code{\link{nongauss_y}}).
 }
 \arguments{
 \item{y}{Vector of explained variables (N x 1)}
@@ -36,7 +36,7 @@ This function estimates Gaussian and non-Gaussian spatial model for continuous a
 \item{s}{Vector of estimated variance parameters (2 x 1). The first and the second elements are the standard error and the Moran's I value of the estimated spatially dependent process, respectively. The Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (the maximum possible spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked}
 \item{s_c}{Vector of standard errors of the NVCs on xconst}
 \item{s_g}{Vector of estimated standard errors of the group effects}
-\item{e}{Error statistics. If y_type="continuous", it includes residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC) while rlogLik is replaced with log-likelihood (logLik) if method = "ml". If y_type="count", it includes deviance explained, Gaussian likelihood approximating the model, (Gaussian) AIC, and BIC}
+\item{e}{Error statistics. When y_type="continuous", it includes residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). rlogLik is replaced with log-likelihood (logLik) if method = "ml". resid_SE is replaced with the residual standard error for the transformed y (resid_SE_trans) if nongauss is specified. When y_type="count", the error statistics includes root mean squared error (RMSE), Gaussian likelihood approximating the model, AIC and BIC based on the likelihood, and the proportion of the null deviance explained by the model (deviance explained (\%)). deviance explained, which is also used in the mgcv package, corresponds to the adjusted R2 in case of the linear regression}
 \item{vc}{List indicating whether NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed whreas 0 indicates removed}
 \item{r}{Vector of estimated random coefficients on Moran's eigenvectors (L x 1)}
 \item{sf}{Vector of estimated spatial dependent component (N x 1)}

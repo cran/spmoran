@@ -109,8 +109,8 @@ coords  <- boston.c[,c("LON", "LAT")]
 #plot_s(res5,0)            # Spatially varying intercept
 #plot_s(res5,1)            # 1st SNVC (SVC + NVC)
 #plot_s(res5,1,btype="svc")# SVC in the 1st SNVC
-#plot_n(res5,1,xtype="x")  # NVC in the 1st NVC
-#plot_n(res5,6,xtype="xconst")
+#plot_n(res5,1,xtype="x")  # NVC in the 1st NVC on x
+#plot_n(res5,6,xtype="xconst")# NVC in the 6t NVC on xcnost
 
 
 }

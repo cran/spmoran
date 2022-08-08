@@ -1,5 +1,6 @@
 predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
-                         offset0 = NULL, weight0 = NULL, compute_quantile = FALSE ){
+                         offset0 = NULL, weight0 = NULL, compute_se = FALSE,
+                         compute_quantile = FALSE ){
 
   #if(class( mod ) !="resf_vc" ) stop("Error: The model is not an output from the resf_vc fucntion")
   if( !inherits( mod, "resf_vc") ) stop("Error: The model is not an output from the resf_vc fucntion")
@@ -236,41 +237,43 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
     X1      <- as.matrix( as.matrix( mod$other$x ) [,mod$other$x_id] )
   }
 
-   n0        <- dim(meig0$sf)[1]
-   if( !is.null( x0 ) ){
-     if(dim( as.matrix( x0 ) )[2] != length( mod$other$x_id )){
-       stop("x and x0 must have the same number of columns")
-     }
-     if( n0 == 1){
-       X0      <- as.matrix( x0 )[ mod$other$x_id]
-     } else {
-       X0      <- as.matrix( as.matrix( x0 )[,mod$other$x_id] )
-     }
-   }
+  n0        <- dim(meig0$sf)[1]
+  if( !is.null( x0 ) ){
+    if(dim( as.matrix( x0 ) )[2] != length( mod$other$x_id )){
+      stop("x and x0 must have the same number of columns")
+    }
+    if( n0 == 1){
+      X0      <- as.matrix( x0 )[ mod$other$x_id]
+    } else {
+      X0      <- as.matrix( as.matrix( x0 )[,mod$other$x_id] )
+    }
+  }
 
-   if( !is.null( mod$other$xconst ) ){
-     X1const <- as.matrix( as.matrix( mod$other$xconst ) [,mod$other$xf_id] )
-   }
+  if( !is.null( mod$other$xconst ) ){
+    X1const <- as.matrix( as.matrix( mod$other$xconst ) [,mod$other$xf_id] )
+  }
 
 
-   if( !is.null( xconst0 ) ){
-     if( dim( as.matrix( xconst0 ) )[2] != length( mod$other$xf_id ) ){
-       stop("xconst and xconst0 must have the same number of columns")
-     }
+  if( !is.null( xconst0 ) ){
+    if( dim( as.matrix( xconst0 ) )[2] != length( mod$other$xf_id ) ){
+      stop("xconst and xconst0 must have the same number of columns")
+    }
 
-     if( n0 == 1 ){
-       X0const <- as.matrix( xconst0 )[ mod$other$xf_id]
-     } else {
-       X0const <- as.matrix( as.matrix( xconst0 )[,mod$other$xf_id] )
-     }
-   } else {
-     X0const   <- NULL
-   }
+    if( n0 == 1 ){
+      X0const <- as.matrix( xconst0 )[ mod$other$xf_id]
+    } else {
+      X0const <- as.matrix( as.matrix( xconst0 )[,mod$other$xf_id] )
+    }
+  } else {
+    X0const   <- NULL
+  }
 
   XX1_0	      <- list(NULL)
   XX1	        <- NULL
   nvc_x     <- mod$other$nvc_x
   if( is.logical( nvc_x[1] ) == FALSE ){
+    if(is.null(x0)) stop( "Error: x0 is missing" )
+
     X1_nvc  <- as.matrix( as.matrix(X1)[ , nvc_x ] )
 
     if( n0 == 1 ){
@@ -341,6 +344,8 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
   XXconst	    <- NULL
   nvc_xconst <- mod$other$nvc_xconst
   if( is.logical( nvc_xconst[ 1 ] ) ==FALSE ){
+    if(is.null(X0const)) stop( "Error: xconst0 is missing" )
+
     X1const_nvc<- as.matrix( X1const[ , nvc_xconst ] )
     if( n0 == 1 ){
       X0const_nvc<- c( X0const[ nvc_xconst ] )
@@ -359,50 +364,50 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
     #XB_c    <-NULL
     B_c     <-list(NULL)
     for( ii in 1:dim( X1const_nvc )[ 2 ] ){
-     if( np_xxconst[ ii ] <= 2 ){
+      if( np_xxconst[ ii ] <= 2 ){
         B_c[[ii+1]]     <- 0
         np_xxconst[[ii]]<- 0
-     } else {
+      } else {
 
-       test<-TRUE
-       iiii<-0
-       while(test){
-         kkk      <- np_xxconst[ ii ]-iiii
-         knots    <-seq(min( X1const_nvc[ ,ii ] ),max( X1const_nvc[ ,ii ] ),len=kkk+2)[2:(kkk+1)]
-         testt<- try(XX1const_00<- ns( X1const_nvc[ , ii], knots = knots ), silent=TRUE)
-         test <- inherits( testt, "try-error")#class(testt)[1] == "try-error"
-         iiii <- iiii+1
-       }
+        test<-TRUE
+        iiii<-0
+        while(test){
+          kkk      <- np_xxconst[ ii ]-iiii
+          knots    <-seq(min( X1const_nvc[ ,ii ] ),max( X1const_nvc[ ,ii ] ),len=kkk+2)[2:(kkk+1)]
+          testt<- try(XX1const_00<- ns( X1const_nvc[ , ii], knots = knots ), silent=TRUE)
+          test <- inherits( testt, "try-error")#class(testt)[1] == "try-error"
+          iiii <- iiii+1
+        }
 
-       XX1const_0   <- cbind( X1const[,ii] , XX1const_00)
-       if( n0 == 1 ){
-         XX0const_0 <- cbind( X0const_nvc[ ii], predict( XX1const_00, newx= X0const_nvc[ ii]) )
-       } else {
-         XX0const_0 <- cbind( X0const_nvc[,ii], predict( XX1const_00, newx= X0const_nvc[,ii]) )
-       }
+        XX1const_0   <- cbind( X1const[,ii] , XX1const_00)
+        if( n0 == 1 ){
+          XX0const_0 <- cbind( X0const_nvc[ ii], predict( XX1const_00, newx= X0const_nvc[ ii]) )
+        } else {
+          XX0const_0 <- cbind( X0const_nvc[,ii], predict( XX1const_00, newx= X0const_nvc[,ii]) )
+        }
 
-       if( !is.na( mod$other$sel_basis_c[[ ii ]][ 1 ] ) ){
-         XX1const_0<- XX1const_0[,mod$other$sel_basis_c[[ii]]]
-         if( n0 == 1){
-           XX0const_0<- XX0const_0[ mod$other$sel_basis_c[[ii]]]
-         } else {
-           XX0const_0<- XX0const_0[,mod$other$sel_basis_c[[ii]]]
-         }
-       }
+        if( !is.na( mod$other$sel_basis_c[[ ii ]][ 1 ] ) ){
+          XX1const_0<- XX1const_0[,mod$other$sel_basis_c[[ii]]]
+          if( n0 == 1){
+            XX0const_0<- XX0const_0[ mod$other$sel_basis_c[[ii]]]
+          } else {
+            XX0const_0<- XX0const_0[,mod$other$sel_basis_c[[ii]]]
+          }
+        }
 
-       if( n0 == 1 ){
-         for( j in 1:length(XX0const_0)){
-           XX0const_0[ j]<- ( XX0const_0[ j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])### check
-         }
-       } else {
-         for( j in 1:dim(XX0const_0)[2]){
-           XX0const_0[,j]<- ( XX0const_0[,j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])### check
-         }
-       }
+        if( n0 == 1 ){
+          for( j in 1:length(XX0const_0)){
+            XX0const_0[ j]<- ( XX0const_0[ j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])### check
+          }
+        } else {
+          for( j in 1:dim(XX0const_0)[2]){
+            XX0const_0[,j]<- ( XX0const_0[,j] - mean(XX1const_0[,j]))/sd(XX1const_0[,j])### check
+          }
+        }
 
-       B_c[[ii]]    <- XX0const_0
-       #XB_c         <- cbind( XB_c , X0const_nvc[, ii ] * B_c[[ii]] )
-     }
+        B_c[[ii]]    <- XX0const_0
+        #XB_c         <- cbind( XB_c , X0const_nvc[, ii ] * B_c[[ii]] )
+      }
     }
   }
 
@@ -611,83 +616,83 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
 
   xconst_problem <- !is.null( mod$other$xf_id ) & is.null( xconst0 )
   if( ( !is.null( x0 ) ) & ( xconst_problem == FALSE ) ){
-    	sf_pred	<- sf_pred - mean( mod$b_vc[,1] )
-    	xb	    <- xb_vc + xb_const + mean( mod$b_vc[,1] )
-    	pred0	<- xb + sf_pred
-    	if( is.null( b_g0 ) == FALSE ){
-    		na_b_g0   <- is.na( b_g0 )
-    		if( sum( na_b_g0 ) > 0 ){
-    		  b_g0[ na_b_g0 ] <- 0
-    		  message( "Note: NAs are given to the groups that are not in xgroup")
-    		}
-    		pred0   <- pred0 + rowSums( b_g0 )
-    	}
+    sf_pred	<- sf_pred - mean( mod$b_vc[,1] )
+    xb	    <- xb_vc + xb_const + mean( mod$b_vc[,1] )
+    pred0	<- xb + sf_pred
+    if( is.null( b_g0 ) == FALSE ){
+      na_b_g0   <- is.na( b_g0 )
+      if( sum( na_b_g0 ) > 0 ){
+        b_g0[ na_b_g0 ] <- 0
+        message( "Note: NAs are given to the groups that are not in xgroup")
+      }
+      pred0   <- pred0 + rowSums( b_g0 )
+    }
 
-    	y0         <- mod$other$y
-    	tr_num     <- mod$other$tr_num
-    	y_nonneg   <- mod$other$y_nonneg
-    	y_type     <- mod$other$y_type
-    	tr_par     <- mod$tr_par
-    	tr_bpar    <- mod$tr_bpar$Estimate
-    	y_added    <- mod$other$y_added
-    	jackup     <- mod$other$jackup
-    	noconst_last<-TRUE
-    	if( tr_num > 0 ){
-    	  z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,jackup=jackup)
-    	  z_ms     <- z0$z_ms
-    	  y_ms     <- z0$y_ms
+    y0         <- mod$other$y
+    tr_num     <- mod$other$tr_num
+    y_nonneg   <- mod$other$y_nonneg
+    y_type     <- mod$other$y_type
+    tr_par     <- mod$tr_par
+    tr_bpar    <- mod$tr_bpar$Estimate
+    y_added    <- mod$other$y_added
+    jackup     <- mod$other$jackup
+    noconst_last<-TRUE
+    if( tr_num > 0 ){
+      z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,jackup=jackup)
+      z_ms     <- z0$z_ms
+      y_ms     <- z0$y_ms
 
-    	  dif      <- 1/d_sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup)
-    	  pred     <- i_sal_k(par=tr_par,y=pred0,k=tr_num,noconst_last=noconst_last,
-    	                      bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
-    	  if( y_nonneg ) pred[ pred < 0 ] <- 0
-    	  if( y_type=="count" ){
-    	    pred <- exp( pred )
-    	    if( !is.null( mod$other$offset ) ){
-    	      if( is.null( offset0 ) ) stop( "offset0 is missing" )
-    	      pred <- pred * offset0
-    	    }
-    	  }
+      dif      <- 1/d_sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup)
+      pred     <- i_sal_k(par=tr_par,y=pred0,k=tr_num,noconst_last=noconst_last,
+                          bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
+      if( y_nonneg ) pred[ pred < 0 ] <- 0
+      if( y_type=="count" ){
+        pred <- exp( pred )
+        if( !is.null( mod$other$offset ) ){
+          if( is.null( offset0 ) ) stop( "offset0 is missing" )
+          pred <- pred * offset0
+        }
+      }
 
-    	} else if( y_nonneg ){
-    	  z0      <- bc(par=tr_bpar,y=y0,jackup=jackup)
-    	  z_ms    <- NULL#c(mean(z0),sd(z0))
-    	  y_ms    <- NULL
+    } else if( y_nonneg ){
+      z0      <- bc(par=tr_bpar,y=y0,jackup=jackup)
+      z_ms    <- c(mean(z0),sd(z0))
+      y_ms    <- NULL
 
-    	  dif      <- 1 / ( d_bc(par=tr_bpar,y=y0,jackup=jackup) )#/z_ms[2]
-    	  pred0b   <- pred0#*z_ms[2] + z_ms[1]
-    	  pred     <- i_bc(par=tr_bpar,y=pred0b,jackup=jackup) - y_added
-    	  pred[is.nan(pred)]<-0
-    	  pred[ pred < 0 ] <- 0
+      dif      <- 1 / ( d_bc(par=tr_bpar,y=y0,jackup=jackup)*d_sc(par=z_ms,y) )#/z_ms[2]
+      pred0    <- pred0*z_ms[2] + z_ms[1]
+      pred     <- i_bc(par=tr_bpar,y=pred0,jackup=jackup) - y_added
+      pred[is.nan(pred)]<-0
+      pred[ pred < 0 ] <- 0
 
-    	} else {
-    	  dif      <- 1
-    	  z_ms     <- NULL
-    	  y_ms     <- NULL
-    	  pred     <- pred0
-    	  if( y_type=="count" ){
-    	    pred <- exp( pred )
-    	    if( !is.null( mod$other$offset ) ){
-    	      if( is.null( offset0 ) ) stop( "offset0 is missing" )
-    	      pred <- pred * offset0
-    	    }
-    	  }
-    	}
+    } else {
+      dif      <- 1
+      z_ms     <- NULL
+      y_ms     <- NULL
+      pred     <- pred0
+      if( y_type=="count" ){
+        pred <- exp( pred )
+        if( !is.null( mod$other$offset ) ){
+          if( is.null( offset0 ) ) stop( "offset0 is missing" )
+          pred <- pred * offset0
+        }
+      }
+    }
 
-    	if( is.null( z_ms )&( y_nonneg==FALSE ) ){
-    	  if( !is.null( b_g ) ){
-    	    res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred, b_g )
-    	  } else {
-    	    res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred )
-    	  }
+    if( is.null( z_ms )&( y_nonneg==FALSE ) ){
+      if( !is.null( b_g ) ){
+        res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred, b_g )
+      } else {
+        res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred )
+      }
 
-    	} else {
-    	  if( !is.null( b_g ) ){
-    	    res	<- data.frame( "pred" = pred, "pred_transG" = pred0, "xb" = xb, "sf_residual" = sf_pred, b_g )
-    	  } else {
-    	    res	<- data.frame( "pred" = pred, "pred_transG" = pred0, "xb" = xb, "sf_residual" = sf_pred )
-    	  }
-    	}
+    } else {
+      if( !is.null( b_g ) ){
+        res	<- data.frame( "pred" = pred, "pred_transG" = pred0, "xb" = xb, "sf_residual" = sf_pred, b_g )
+      } else {
+        res	<- data.frame( "pred" = pred, "pred_transG" = pred0, "xb" = xb, "sf_residual" = sf_pred )
+      }
+    }
 
   } else if( is.null( x0 ) & ( xconst_problem == FALSE )){
     #sf_pred	<- sf_pred - mean( mod$b_vc[,1] )
@@ -704,8 +709,8 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
     res	<- NULL
     message( "Note: y is not predicted because x0 and/or xconst0 is missing" )
   } else {
-    	res	<- NULL
-    	message( "Note: y is not predicted because x0 and/or xconst0 is missing" )
+    res	<- NULL
+    message( "Note: y is not predicted because x0 and/or xconst0 is missing" )
   }
 
   b_vc	  <- as.data.frame( b_vc )
@@ -731,101 +736,117 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
     c_vc <- cse_vc <- ct_vc <- cp_vc <- NULL
   }
 
+  ################## standard error
+  if( mod$other$y_type == "count" & compute_se == TRUE ){
+    compute_se      <- FALSE
+  }
+  if( compute_se == FALSE & compute_quantile == TRUE ){
+    compute_se      <- TRUE
+  }
+
+  if( mod$other$y_type != "count" & compute_se & !is.null(res) ){
+    if( mod$other$is_weight ==TRUE ){
+      if( is.null( weight0 ) ) stop( "Error: weight0 is needed to compute SE/quantile" )
+    } else {
+      weight0     <- NULL
+    }
+
+    B_covs  <-mod$other$B_covs
+    #B_covs_id<-colSums(B_covs0) - diag(B_covs0)
+    #B_covs   <-B_covs0[ B_covs_id != 0 , B_covs_id != 0 ]
+
+    sig   <-mod$other$sig
+    XX	<- as.matrix( cbind( 1, X0const, X0 ) )
+
+    #########SVC
+    for( i in 1:nsv ){
+      evSqrts    <-mod$other$evSqrts[[ i ]]
+      if(length( evSqrts ) == 1) evSqrts <- NULL
+
+      if( !is.null( evSqrts ) ){
+        if( i == 1 ) {
+          XX<- cbind( XX, meig0$sf )
+        } else {
+          XX<- cbind( XX, X0[ , i-1 ] * meig0$sf )
+        }
+      }
+    }
+
+    #########Group
+    if( !is.null( mod$b_g ) ){
+      for( ggid in 1:ng ){
+        skip_id     <-which(is.na(mod$b_g[[ggid]][,2]))
+        xg_levels   <- mod$other$xg_levels[[ggid]][ -skip_id]
+        Xg          <- matrix( 0, nrow =n0, ncol=length( xg_levels ) )
+        for( ggid2 in 1:length( xg_levels ) ) Xg[ ,ggid2 ][ xgroup0[, ggid ] == xg_levels[ ggid2 ] ]<-1
+        XX  <-cbind(XX, Xg)
+      }
+    }
+
+    #########NVConst
+    if( !is.null( mod$c_vc ) ){
+      for( i in 1:nnxf ){
+        evSqrts_c<- mod$other$evSqrts_c[[ i ]]
+        if(length( evSqrts_c ) == 1) evSqrts_c <- NULL
+
+        if( length( mod$other$evSqrts_c[[ i ]] ) <= 1 ){
+        } else {
+          XX<- cbind( XX, X0const[ , i ] * B_c[[ i ]] )
+        }
+      }
+    }
+
+    #########NVC
+    if( !is.null( mod$other$evSqrts_n[[1]] ) ){
+      for( i in 1:nsv ){
+        if(i ==1){
+          evSqrts_n<- NULL
+        } else {
+          evSqrts_n<- mod$other$evSqrts_n[[ i ]]
+          if(length( evSqrts_n ) == 1) evSqrts_n <- NULL
+        }
+
+        if( !is.null( evSqrts_n ) ){
+          XX<- cbind( XX, X0[ , i-1 ] * B_n[[ i ]] )
+        }
+      }
+    }
+
+    if( is.null( weight0 ) ){
+      weight0  <- 1
+    } else {
+      weight0  <- weight0*mod$other$w_scale
+    }
+
+    X3            <- XX
+    X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* eevSqrt[eevSqrt > 0])
+    pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( B_covs %*% t( sqrt(weight0)*X3 ) ) ) + sig )
+    pred0_se<- pred0_se/sqrt( weight0 )
+    if( sum(names(res) %in% "pred_transG") == 0 ){
+      res_name<-names( res )
+      res   <- data.frame( res[,1], pred_se = pred0_se, res[,-1] )
+      names( res ) <- c( res_name[1], "pred_se", res_name[-1] )
+    } else {
+      res_name<-names( res )
+      res   <- data.frame( res[,1:2], pred_se = pred0_se, res[,-c(1:2)] )
+      names( res ) <- c( res_name[1:2], "pred_transG_se", res_name[-c(1:2)] )
+    }
+  }
+
+  ################## quantile
   pq_dat           <- NULL
   if( compute_quantile ==TRUE ){
     if( mod$other$y_type == "count" ){
       message("Note: 'compute_quantile' is currently not supported for count data")
     } else {
-      if( mod$other$is_weight ==TRUE ){
-        if( is.null( weight0 ) ) stop( "Specify weight0 to compute quantile" )
-      } else {
-        weight0     <- NULL
-      }
-
       if( is.null( res ) ){
         stop( "x0 and/or xconst0 are missing. They are required to compute quantile" )
       }
 
-      B_covs  <-mod$other$B_covs
-      #B_covs_id<-colSums(B_covs0) - diag(B_covs0)
-      #B_covs   <-B_covs0[ B_covs_id != 0 , B_covs_id != 0 ]
-
-      sig   <-mod$other$sig
-      XX	<- as.matrix( cbind( 1, X0const, X0 ) )
-
-      #########SVC
-      for( i in 1:nsv ){
-        evSqrts    <-mod$other$evSqrts[[ i ]]
-        if(length( evSqrts ) == 1) evSqrts <- NULL
-
-        if( !is.null( evSqrts ) ){
-          if( i == 1 ) {
-            XX<- cbind( XX, meig0$sf )
-          } else {
-            XX<- cbind( XX, X0[ , i-1 ] * meig0$sf )
-          }
-        }
-      }
-
-      #########Group
-      if( !is.null( mod$b_g ) ){
-        for( ggid in 1:ng ){
-          skip_id     <-which(is.na(mod$b_g[[ggid]][,2]))
-          xg_levels   <- mod$other$xg_levels[[ggid]][ -skip_id]
-          Xg          <- matrix( 0, nrow =n0, ncol=length( xg_levels ) )
-          for( ggid2 in 1:length( xg_levels ) ) Xg[ ,ggid2 ][ xgroup0[, ggid ] == xg_levels[ ggid2 ] ]<-1
-          XX  <-cbind(XX, Xg)
-        }
-      }
-
-      #########NVConst
-      if( !is.null( mod$c_vc ) ){
-        for( i in 1:nnxf ){
-          evSqrts_c<- mod$other$evSqrts_c[[ i ]]
-          if(length( evSqrts_c ) == 1) evSqrts_c <- NULL
-
-          if( length( mod$other$evSqrts_c[[ i ]] ) <= 1 ){
-          } else {
-            XX<- cbind( XX, X0const[ , i ] * B_c[[ i ]] )
-          }
-        }
-      }
-
-      #########NVC
-      if( !is.null( mod$other$evSqrts_n[[1]] ) ){
-        for( i in 1:nsv ){
-          if(i ==1){
-            evSqrts_n<- NULL
-          } else {
-            evSqrts_n<- mod$other$evSqrts_n[[ i ]]
-            if(length( evSqrts_n ) == 1) evSqrts_n <- NULL
-          }
-
-          if( !is.null( evSqrts_n ) ){
-            XX<- cbind( XX, X0[ , i-1 ] * B_n[[ i ]] )
-          }
-        }
-      }
-
-      if( is.null( weight0 ) ){
-        weight0  <- 1
+      if( mod$other$is_weight ==TRUE ){
+        if( is.null( weight0 ) ) stop( "Specify weight0 to compute quantile" )
       } else {
-        weight0  <- weight0*mod$other$w_scale
-      }
-
-      X3            <- XX
-      X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* eevSqrt[eevSqrt > 0])
-      pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( B_covs %*% t( sqrt(weight0)*X3 ) ) ) + sig )
-      pred0_se<- pred0_se/sqrt( weight0 )
-      if( sum(names(res) %in% "pred_transG") == 0 ){
-        res_name<-names( res )
-        res   <- data.frame( res[,1], pred_se = pred0_se, res[,-1] )
-        names( res ) <- c( res_name[1], "pred_se", res_name[-1] )
-      } else {
-        res_name<-names( res )
-        res   <- data.frame( res[,1:2], pred_se = pred0_se, res[,-c(1:2)] )
-        names( res ) <- c( res_name[1:2], "pred_transG_se", res_name[-c(1:2)] )
-
+        weight0     <- NULL
       }
 
       pquant  <- c(0.01, 0.025, 0.05, seq(0.1,0.9,0.1), 0.95, 0.975, 0.99)
@@ -883,6 +904,6 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
                   b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc,
                   c_vc = c_vc, cse_vc = cse_vc, ct_vc = ct_vc, cp_vc = cp_vc )
 
- return( result )
+  return( result )
 }
 

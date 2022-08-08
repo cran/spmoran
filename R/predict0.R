@@ -1,5 +1,6 @@
 predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
-                        weight0 = NULL, compute_quantile = FALSE ){
+                        weight0 = NULL, compute_se=FALSE,
+                        compute_quantile = FALSE ){
 
   #if( (class( mod ) !="resf")&(class( mod ) !="esf") ){
   if( (inherits(mod, "resf")==FALSE)&(inherits( mod, "esf")==FALSE) ){
@@ -462,12 +463,12 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
     }
 
     if( is.null( b_g0 ) == FALSE ){
-      pred      <- data.frame( pred, b_g0 )
       na_b_g0   <- is.na( b_g0 )
       if( sum( na_b_g0 ) > 0 ){
         b_g0[ na_b_g0 ] <- 0
         message( " Note: b_g = 0 is assumed for samples who does not belong to any groups in xgroup")
       }
+      pred      <- data.frame( pred, b_g0 )
       pred[ ,1 ]<- pred[ ,1 ] + rowSums( b_g0 )
     }
 
@@ -502,11 +503,18 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
 
     } else if( y_nonneg ){
       z0        <- bc(par=tr_bpar,y=y0,jackup=jackup)
+      z_ms      <- c(mean(z0),sd(z0))
+      pred0     <- pred0*z_ms[2] + z_ms[1]
       pred2     <- i_bc(par=tr_bpar,y=pred0,jackup=jackup) - y_added
       pred2[ is.nan( pred2 ) ] <- 0
       pred2[pred2 < 0 ]        <- 0
-      pred	    <- data.frame( pred = pred2, pred_transG=pred0, pred[,-1] )
-      names(pred)[-c(1:2)]<-pred_name[ -1 ]
+      pred_test      <- data.frame(pred=pred2, pred_transG=pred0,pred[,-1])
+      pred_test$xb   <- pred_test$xb*z_ms[2]+z_ms[1]
+      if(ncol(pred_test)>=3){
+        pred_test[,3:ncol(pred_test)] <- pred_test[,3:ncol(pred_test)]*z_ms[2]
+      }
+      names(pred_test)[-c(1:2)]<-pred_name[ -1 ]
+      pred      <- pred_test
 
     } else if( y_type=="count" ){
       pred2     <- exp( pred0 )
@@ -518,72 +526,85 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
       names(pred)[-c(1:2)] <- pred_name[ -1 ]
     }
 
+    ################## pred_se
+    if( mod$other$y_type == "count" & compute_se ){
+      compute_se      <- FALSE
+    }
+    if( compute_se == FALSE & compute_quantile == TRUE ){
+      compute_se      <- TRUE
+    }
+
+    if( mod$other$y_type != "count" & compute_se ){
+      #  if( mod$other$y_type != "count" & compute_se & !is.null(res) ){
+      if( mod$other$is_weight ==TRUE ){
+        if( is.null( weight0 ) ) stop( "Error: weight0 is needed to compute SE/quantile" )
+      } else {
+        weight0     <- NULL
+      }
+
+      if( !is.null( mod$other$x_id )&is.null( X0 ) ){
+        stop( "Error: x0 is needed to compute SE" )
+      }
+
+      B_covs<-mod$other$B_covs
+      sig   <-mod$other$sig
+      XX	   <- as.matrix( cbind( 1, X0, meig0$sf ) )
+
+      #########Group
+      if( !is.null( mod$b_g ) ){
+        for( ggid in 1:ng ){
+          skip_id     <-which(is.na(mod$b_g[[ggid]][,2]))
+          xg_levels   <- mod$other$xg_levels[[ggid]][ -skip_id]
+          Xg          <- matrix( 0, nrow =n0, ncol=length( xg_levels ) )
+          for( ggid2 in 1:length( xg_levels ) ) Xg[ ,ggid2 ][ xgroup0[, ggid ] == xg_levels[ ggid2 ] ]<-1
+          XX  <-cbind(XX, Xg)
+        }
+      }
+
+      #########NVC
+      if( !is.null( mod$other$res$other$evSqrts_c[[1]] ) ){
+        for( i in 1:nnxf ){
+          #if(i ==1){
+          # evSqrts_n<- NULL
+          #} else {
+          evSqrts_n<- mod$other$res$other$evSqrts_c[[ i ]]
+          if( length( evSqrts_n ) == 1 ) evSqrts_n <- NULL
+          #}
+
+          if( !is.null( evSqrts_n ) ){
+            XX<- cbind( XX, X0[ , i ] * B_c[[ i ]] )
+          }
+        }
+      }
+
+      if( is.null( weight0 ) ){
+        weight0  <- 1
+      } else {
+        weight0  <- weight0*mod$other$w_scale
+      }
+
+      X3      <- XX
+      X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* eevSqrt[eevSqrt > 0])
+      pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( B_covs %*% t( sqrt(weight0)*X3 ) ) ) + sig )
+      pred0_se<- pred0_se/sqrt( weight0 )
+      if( sum(names( pred ) %in% "pred_transG") == 0 ){
+        pred_name<-names( pred )
+        pred     <- data.frame( pred[,1], pred_se = pred0_se, pred[,-1] )
+        names( pred ) <- c( pred_name[1], "pred_se", pred_name[ -1 ] )
+      } else {
+        pred_name<-names( pred )
+        pred     <- data.frame( pred[,1:2], pred_se = pred0_se, pred[,-(1:2)])
+        names( pred ) <- c( pred_name[1:2], "pred_transG_se", pred_name[-(1:2)] )
+      }
+    }
+
+    ################## pred_quantiule
     res      <- pred
     pq_dat   <- NULL
     if( compute_quantile ==TRUE ){
       if( mod$other$y_type == "count" ){
         message("Note: 'compute_quantile' is currently not supported for count data")
       } else {
-        if( mod$other$is_weight ==TRUE ){
-          if( is.null( weight0 ) ) stop( "Specify weight0 to compute quantile" )
-        } else {
-          weight0     <- NULL
-        }
-
-        if( !is.null( mod$other$x_id )&is.null( X0 ) ){
-          stop( "x0 is required to compute quantile" )
-        }
-
-        B_covs<-mod$other$B_covs
-        sig   <-mod$other$sig
-        XX	   <- as.matrix( cbind( 1, X0, meig0$sf ) )
-
-        #########Group
-        if( !is.null( mod$b_g ) ){
-          for( ggid in 1:ng ){
-            skip_id     <-which(is.na(mod$b_g[[ggid]][,2]))
-            xg_levels   <- mod$other$xg_levels[[ggid]][ -skip_id]
-            Xg          <- matrix( 0, nrow =n0, ncol=length( xg_levels ) )
-            for( ggid2 in 1:length( xg_levels ) ) Xg[ ,ggid2 ][ xgroup0[, ggid ] == xg_levels[ ggid2 ] ]<-1
-            XX  <-cbind(XX, Xg)
-          }
-        }
-
-        #########NVC
-        if( !is.null( mod$other$res$other$evSqrts_c[[1]] ) ){
-          for( i in 1:nnxf ){
-            #if(i ==1){
-            # evSqrts_n<- NULL
-            #} else {
-            evSqrts_n<- mod$other$res$other$evSqrts_c[[ i ]]
-            if( length( evSqrts_n ) == 1 ) evSqrts_n <- NULL
-            #}
-
-            if( !is.null( evSqrts_n ) ){
-              XX<- cbind( XX, X0[ , i ] * B_c[[ i ]] )
-            }
-          }
-        }
-
-        if( is.null( weight0 ) ){
-          weight0  <- 1
-        } else {
-          weight0  <- weight0*mod$other$w_scale
-        }
-
-        X3      <- XX
-        X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* eevSqrt[eevSqrt > 0])
-        pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( B_covs %*% t( sqrt(weight0)*X3 ) ) ) + sig )
-        pred0_se<- pred0_se/sqrt( weight0 )
-        if( sum(names( res ) %in% "pred_transG") == 0 ){
-          res_name<-names( res )
-          res     <- data.frame( res[,1], pred_se = pred0_se, res[,-1] )
-          names( res ) <- c( res_name[1], "pred_se", res_name[ -1 ] )
-        } else {
-          res_name<-names( res )
-          res     <- data.frame( res[,1:2], pred_se = pred0_se, res[,-(1:2)])
-          names( res ) <- c( res_name[1:2], "pred_transG_se", res_name[-(1:2)] )
-        }
 
         pquant    <- c(0.01, 0.025, 0.05, seq(0.1,0.9,0.1), 0.95, 0.975, 0.99)
         pq_dat0   <- NULL
@@ -634,6 +655,13 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
       }
     }
 
+  }
+
+  if( !is.null(c_vc) ){
+    c_vc  <-as.data.frame(c_vc)  ;names(c_vc)  <-names(mod$c_vc)
+    cse_vc<-as.data.frame(cse_vc);names(cse_vc)<-names(mod$c_vc)
+    ct_vc <-as.data.frame(ct_vc) ;names(ct_vc) <-names(mod$c_vc)
+    cp_vc <-as.data.frame(cp_vc) ;names(cp_vc) <-names(mod$c_vc)
   }
 
   result <- list( pred = res, pred_quantile=pq_dat,

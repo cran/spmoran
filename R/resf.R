@@ -146,10 +146,10 @@ print.resf <- function(x, ...)
               format(AIC_NULL,digits=7), ",  BIC: ", format(BIC_NULL,digits=7)," )\n",sep=""))
   }
 
-  #if( x$other$method=="reml"){
-  #  cat('\nNote: The AIC and BIC values are based on the restricted likelihood.')
-  #  cat('\n      Use method ="ml" for comparison of models with different fixed effects (x)\n')
-  #}
+  if( x$other$method=="reml"){
+    cat('\nNote: AIC and BIC are based on the restricted/marginal likelihood.')
+    cat('\n      Use method="ml" for comparison of models with different fixed effects (x)\n')
+  }
   invisible(x)
 }
 

@@ -9,7 +9,7 @@ resf_vc(y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = NULL,
         penalty = "bic", maxiter = 30, nongauss = NULL )
 }
 \description{
-This model estimates regression coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), group effects, and residual spatial dependence. The random-effects eigenvector spatial filtering, which is an approximate Gaussian process approach, is used for modeling the spatial process in coefficients and residuals. While the resf_vc function estimates a SVC model by default, the type of coefficients (constant, SVC, NVC, or SNVC) can be selected through a BIC/AIC minimization. This function is available for modeling Gaussian and non-Gaussian data including continuous and count data (see \code{\link{nongauss_y}}).
+This model estimates regression coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), group effects, and residual spatial dependence. The random-effects eigenvector spatial filtering, which is an approximate Gaussian process approach, is used for modeling the spatial process in coefficients and residuals. While the resf_vc function estimates a SVC model by default, the type of coefficients (constant, SVC, NVC, or SNVC) can be selected through a BIC/AIC minimization. The explained variables are transformed to fit the data distribution if nongauss is specified. Thus, this function is available for modeling Gaussian and non-Gaussian continuous data and count data (see \code{\link{nongauss_y}}).
 
 Note that SNVCs can be mapped just like SVCs. SNVC model is more robust against spurious correlation (multicollinearity) and stable than SVC models (see Murakami and Griffith, 2020).
 }
@@ -52,7 +52,7 @@ This function estimates Gaussian and non-Gaussian spatial model for continuous a
 \item{s_c}{Vector of standard errors of the NVCs on xconst}
 \item{s_g}{Vector of standard errors of the group effects}
 \item{vc}{List indicating whether SVC/NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed (replaced with constant) whreas 0 indicates removed}
-\item{e}{Error statistics. If y_type="continuous", it includes residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). rlogLik is replaced with log-likelihood (logLik) if method = "ml". If y_type="count", it includes root mean squared error (RMSE), Gaussian likelihood approximating the model, AIC and BIC based on the likelihood}
+\item{e}{Error statistics. When y_type="continuous", it includes residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). rlogLik is replaced with log-likelihood (logLik) if method = "ml". resid_SE is replaced with the residual standard error for the transformed y (resid_SE_trans) if nongauss is specified. When y_type="count", the error statistics includes root mean squared error (RMSE), Gaussian likelihood approximating the model, AIC and BIC based on the likelihood, and the proportion of the null deviance explained by the model (deviance explained (\%)). deviance explained, which is also used in the mgcv package, corresponds to the adjusted R2 in case of the linear regression}
 \item{pred}{Matrix of predicted values for y (pred) and their standard errors (pred_se) (N x 2). If y is transformed by specifying \code{\link{nongauss_y}}, the predicted values in the transformed/normalized scale are added as another column named pred_trans}
 \item{pred_quantile}{Matrix of the quantiles for the predicted values (N x 15). It is useful to evaluate uncertainty in the predictive value}
 \item{tr_par}{List of the parameter estimates for the tr_num SAL transformations. The k-th element of the list includes the four parameters for the k-th SAL transformation (see \code{\link{nongauss_y}})}
@@ -68,7 +68,7 @@ Murakami, D., Yoshida, T., Seya, H., Griffith, D.A., and Yamagata, Y. (2017) A M
 
 Murakami, D., Kajita, M., Kajita, S. and Matsui, T. (2021) Compositionally-warped additive mixed modeling for a wide variety of non-Gaussian data. Spatial Statistics, 43, 100520.
 
-Murakami, D., and Griffith, D.A. (2020) Balancing spatial and non-spatial variations in varying coefficient modeling: a remedy for spurious correlation. Geographical Analysis, DOI: 10.1111/gean.12310.
+Murakami, D., and Griffith, D.A. (2021) Balancing spatial and non-spatial variations in varying coefficient modeling: a remedy for spurious correlation. Geographical Analysis, DOI: 10.1111/gean.12310.
 
 Griffith, D. A. (2003) Spatial autocorrelation and spatial filtering: gaining understanding through theory and scientific visualization. Springer Science & Business Media.
 }
@@ -169,6 +169,5 @@ plot_s(res,2) # 2nd SVC
 
 #ng9    <- nongauss_y( y_type = "count", tr_num = 2 )
 #res9	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, nongauss = ng9 )
-
 
 }
