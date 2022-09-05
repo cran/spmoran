@@ -14,7 +14,8 @@ weigen <-function( x = NULL, type = "knn", k = 4,
         id_id	<- id_end + 1
       }
 
-      C   <- as( spMatrix( n, n ), "dgCMatrix" )
+      #C   <- as( spMatrix( n, n ), "dgCMatrix" )
+      C   <- sparseMatrix(i={},j={},dims=c(n,n),x=0)
       C[ listw2 ]<-1
       return(C)
     }

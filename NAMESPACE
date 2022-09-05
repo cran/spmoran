@@ -1,5 +1,5 @@
 importFrom(fields, rdist)
-importFrom(Matrix, determinant, spMatrix)
+importFrom(Matrix, determinant, sparseMatrix)
 importFrom(rARPACK, eigs_sym)
 importFrom(RColorBrewer, brewer.pal)
 importFrom(vegan, spantree)
