@@ -4,7 +4,7 @@
 \usage{
 besf( y, x = NULL, nvc = FALSE, nvc_sel = TRUE, coords, s_id = NULL,
       covmodel="exp", enum = 200, method = "reml", penalty = "bic", nvc_num = 5,
-      maxiter = 30, bsize = 4000, cl = NULL )
+      maxiter = 30, bsize = 4000, ncores = NULL )
 }
 \description{
 Memory-free implementation of RE-ESF-based spatial regression for very large samples. This model estimates residual spatial dependence, constant coefficients, and non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value).
@@ -23,7 +23,7 @@ Memory-free implementation of RE-ESF-based spatial regression for very large sam
 \item{nvc_num}{Number of basis functions used to model NVC. An intercept and nvc_num natural spline basis functions are used to model each NVC. Default is 5}
 \item{maxiter}{Maximum number of iterations. Default is 30}
 \item{bsize}{Block/badge size. bsize x bsize elements are iteratively processed during the parallelized computation. Default is 4000}
-\item{cl}{Number of cores used for the parallel computation. If cl = NULL, the number of available cores is detected. Default is NULL}
+\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL, the number of available cores is detected. Default is NULL}
 }
 \value{
 \item{b}{Matrix with columns for the estimated coefficients on x, their standard errors, z-values, and p-values (K x 4). Effective if nvc =FALSE}

@@ -8,14 +8,14 @@ weigen( x = NULL, type = "knn", k = 4, threshold = 0.25, enum = NULL )
 This function extracts eigenvectors and eigenvalues from a spatial weight matrix.
 }
 \arguments{
-\item{x}{Matrix of spatial point coordinates (N x 2), ShapePolygons object (N spatial units), or an user-specified spatial weight matrix (N x N) (see Details)}
-\item{type}{Type of spatial weights. The currently available options are "knn" for the k-nearest neighbor-based weights, and "tri" for the Delaunay triangulation-based weights. If ShapePolygons are provided for x, type is ignored, and the rook-type neighborhood matrix is created}
+\item{x}{Matrix of spatial point coordinates (N x 2), sf polygon object (N spatial units), or an user-specified spatial weight matrix (N x N) (see Details)}
+\item{type}{Type of spatial weights. The currently available options are "knn" for the k-nearest neighbor-based weights, and "tri" for the Delaunay triangulation-based weights. If sf polygons are provided for x, type is ignored, and the rook-type neighborhood matrix is created}
 \item{k}{Number of nearest neighbors. It is used if type ="knn"}
 \item{threshold}{Threshold for the eigenvalues (scalar). Suppose that lambda_1 is the maximum eigenvalue. Then, this fucntion extracts eigenvectors whose corresponding eigenvalues are equal or greater than [threshold x lambda_1]. It must be a value between 0 and 1. Default is 0.25 (see Details)}
 \item{enum}{Optional. The muximum acceptable mumber of eigenvectors to be used for spatial modeling (scalar)}
 }
 \details{
-If user-specified spatial weight matrix is provided for x, this function returns the eigen-pairs of the matrix. Otherwise, if a SpatialPolygons object is provided to x, the rook-type neighborhood matrix is created using this polygon, and eigen-decomposed. Otherwise, if point coordinats are provided to x, a spatial weight matrix is created according to type, and eigen-decomposed.
+If user-specified spatial weight matrix is provided for x, this function returns the eigen-pairs of the matrix. Otherwise, if sf polygon object is provided to x, the rook-type neighborhood matrix is created using this polygon, and eigen-decomposed. Otherwise, if point coordinats are provided to x, a spatial weight matrix is created according to type, and eigen-decomposed.
 
 By default, the ARPACK routine is implemented for fast eigen-decomposition.
 
@@ -39,11 +39,11 @@ Daisuke Murakami
 \code{\link{meigen}}, \code{\link{meigen_f}}
 }
 \examples{
-require(spdep);library(rgdal)
+require(spdep)
 data(boston)
 
 ########## Rook adjacency-based W
-poly	    <- readOGR(system.file("shapes/boston_tracts.shp",package="spData")[1])
+poly	    <- st_read(system.file("shapes/boston_tracts.shp",package="spData")[1])
 weig1	    <- weigen( poly )
 
 ########## knn-based W

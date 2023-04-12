@@ -3,7 +3,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
                       x_nvc = FALSE, xconst_nvc = FALSE,
                       x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num=5,
                       method = "reml", penalty = "bic", maxiter = 30,
-                      covmodel="exp",enum = 200, bsize = 4000, cl=NULL ){
+                      covmodel="exp",enum = 200, bsize = 4000, ncores=NULL ){
 
   n     	    <- length( y )
   nvc_x       <- x_nvc
@@ -459,12 +459,12 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
   nblock  <-max(1,round((n*(nxf + length(ev)*nsv)/bsize^2)))
   ids   <- unique(c(round(seq(1,n,len=nblock+1)),n))
 
-  if(is.null(cl)) {
-    cl <- makeCluster(detectCores(),setup_strategy = "sequential")
+  if(is.null(ncores)) {
+    ncores <- makeCluster(detectCores(),setup_strategy = "sequential")
   } else {
-    cl <- makeCluster(cl,setup_strategy = "sequential")
+    ncores <- makeCluster(ncores,setup_strategy = "sequential")
   }
-  registerDoParallel(cl)
+  registerDoParallel(ncores)
 
   im     <- NULL
   sfsf   <- foreach(im = 1:(length(ids)-1), .packages=c("fields", "splines"),.combine="+") %dopar%  {
@@ -1143,7 +1143,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     }
     cbind(b_vc0, bse_vc0, b_vc_s0, b_vc_n0, bse_vc_s0, bse_vc_n0, c_vc0, cse_vc0)
   }
-  stopCluster(cl)
+  stopCluster(ncores)
 
   bvc_all   <-as.matrix(bvc_all)
   b_vc      <-as.matrix(bvc_all[,1:nsv])

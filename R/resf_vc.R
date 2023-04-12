@@ -2,7 +2,7 @@
 resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = NULL,
                        x_nvc = FALSE, xconst_nvc = FALSE,
                        x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num = 5,
-                       meig, method = "reml", penalty = "bic", maxiter = 30, nongauss = NULL ){
+                       meig, method = "reml", penalty = "bic", miniter=NULL, maxiter = 30, nongauss = NULL ){
 
 
   {
@@ -686,6 +686,18 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
   }
 
+  bse_vc_adj<-function(meig,bse_vc){
+    cminfun  <-function(par, sfsf, bse_vc){
+      val    <-bse_vc^2 + par*( 1 - sfsf )
+      weighted_corr <- cov.wt(data.frame(val,sfsf), wt = sfsf, cor = TRUE)
+      weighted_corr$cor[1,2]^2
+    }
+    opt_v    <- optimize(interval=c(0,1.5),cminfun,sfsf=meig$other$sfsf,bse_vc=bse_vc)
+    add      <- sqrt(bse_vc^2 + opt_v$minimum*(1 - meig$other$sfsf )) - bse_vc
+
+    return(list(add=add,opt_v=opt_v))
+  }
+
   lik_resf_vc		<- function( par0, par0_est, par0_id, par0_sel, ev, M, M0inv, M0inv_01, M0inv_00,
                             m, yy, b_01, b_02, n, nx, nsv, nnxf, nnsv, ng, emet, term2, term3_0, null_dum2,
                             id, tr_comp=0 ){
@@ -1329,6 +1341,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   par0[(par0_id %in% id_exist) ==FALSE]<-0
   Par    <-par0
 
+  miniter<- ifelse( is.null( miniter ), 4, miniter)
   obj	   <- sd( y )
   LL	   <- NULL
   res_old<- Inf
@@ -1336,7 +1349,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   iter	 <- 1
   gmess  <- 1
   warn   <- FALSE
-  while( (( obj > sd( y ) * 0.0001 ) & ( iter <= maxiter ))|( iter <= 4 ) ){
+  while( (( obj > sd( y ) * 0.0001 ) & ( iter <= maxiter ))|( iter <= miniter ) ){
 
     if( !is.null(x) ) print( paste( "-------  Iteration ", iter, "  -------", sep = "" ) )
 
@@ -1965,6 +1978,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   mm[ -( 1:nx ) ]	<- mm[ -( 1:nx ) ] * eevSqrt
   b               <- MMinv %*% mm
   b[ -( 1:nx ) ]	<- b[ -( 1:nx ) ] * eevSqrt
+  b_sub           <- b[ -( 1:nx ) ][eevSqrt>0]/eevSqrt[eevSqrt>0]
 
   X3        <- X
   X3[, null_dum3 ][,-( 1:nx )]<- t(t(X[, null_dum3 ][,-( 1:nx )])* eevSqrt)
@@ -2058,7 +2072,6 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     rmse      <- sqrt( mean((y_org - pred0_ex)^2) )
   }
 
-
   if( y_type == "continuous"){
     if( !is.null( weight ) ){
       pred0	  <- X_org[ , null_dum3 ] %*% b
@@ -2074,8 +2087,14 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       sig		  <- SSE /( n - nxx )
       b_cov		<- sig * MMinv
       b_cov2  <- b_cov[ b!=0, b!=0 ]
-      pred0_se<- sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
-                                  ( b_cov2 %*% t( X3[ , null_dum3 ][ ,b!=0 ] ) ) )  + sig )
+      pred0_se0<-sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
+                            ( b_cov2 %*% t( X3[ , null_dum3 ][ ,b!=0 ] ) ) ) )
+      if( meig$other$fast ){
+        pred0_se0<- pred0_se0 + bse_vc_adj(meig=meig,bse_vc=pred0_se0 )$add
+        pred0_se <- sqrt(pred0_se0^2 + sig)
+      } else {
+        pred0_se <- sqrt( pred0_se0^2 + sig )
+      }
       pred0_se<- pred0_se / sqrt( weight )
 
     } else {
@@ -2086,8 +2105,15 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       sig		  <- sig_org <- SSE /( n - nxx )
       b_cov		<- sig * MMinv
       b_cov2  <- b_cov[ b!=0, b!=0 ]
-      pred0_se<- sqrt( colSums( t( X3[ , null_dum3 ][, b!=0 ] ) *
-                                  ( b_cov2 %*% t( X3[ , null_dum3 ][, b!=0 ] ) ) ) + sig )
+      pred0_se0<-sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
+                                  ( b_cov2 %*% t( X3[ , null_dum3 ][ ,b!=0 ] ) ) ) )
+
+      if( meig$other$fast ){
+        pred0_se0<- pred0_se0 + bse_vc_adj(meig=meig,bse_vc=pred0_se0 )$add
+        pred0_se <- sqrt( pred0_se0^2 + sig )
+      } else {
+        pred0_se <- sqrt( pred0_se0^2 + sig )
+      }
     }
   } else if( y_type == "count" ){
     pred0	  <- X_org[ , null_dum3 ] %*% b
@@ -2104,9 +2130,15 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     b_cov2  <- b_cov[ b!=0, b!=0 ]
 
     ######## (Gaussian approx)
-    pred0_se<- sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
-                                ( b_cov2 %*% t( X3[ , null_dum3 ][ ,b!=0 ] ) ) ) + sig )
-    pred0_se<- pred0_se
+    pred0_se0<- sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
+                                ( b_cov2 %*% t( X3[ , null_dum3 ][ ,b!=0 ] ) ) ) )
+    if( meig$other$fast ){
+      pred0_se0<- pred0_se0 + bse_vc_adj(meig=meig,bse_vc=pred0_se0 )$add
+      pred0_se <- sqrt(pred0_se0^2 + sig)
+    } else {
+      pred0_se <- sqrt( pred0_se0^2 + sig )
+    }
+
   }
 
   bse		  <- sqrt( diag( b_cov ) )
@@ -2139,6 +2171,11 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         bb[[ j ]]	    <- c(b[ bid0 ], b[ bid0_vc ] )
         bb_cov[[ j ]]	<- b_cov_sub
         evSqrts[[ j ]]<- evSqrt2[[ j ]]
+
+        if( meig$other$fast ){
+          bse_vc[ , j ]<-bse_vc[,j]+bse_vc_adj( meig=meig,bse_vc=bse_vc[,j] )$add
+        }
+
         j0		        <- j0 + 1
       } else {
         b_vc[ , j ]	  <- b[ bid0 ]
@@ -2174,6 +2211,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         x_sf_ss       <- as.matrix( cbind( 1, x_sf_s ))              #### added
         b_cov_sub_s0  <- b_cov[ c(bid0, bid0_vc), c(bid0, bid0_vc) ] #### changed
         bse_vc_s0[ , j ]<- sqrt( colSums( t( x_sf_ss ) * ( b_cov_sub_s0 %*% t( x_sf_ss ) ) ) )
+        if( meig$other$fast ){
+          bse_vc_s0[ , j ]<-bse_vc_s0[,j]+bse_vc_adj( meig=meig,bse_vc=bse_vc_s0[,j] )$add
+        }
 
       } else {
         bid0_vc       <- NULL
@@ -2212,6 +2252,11 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         b_cov_sub	    <- b_cov[ bid, bid ]
         x_sf		      <- as.matrix( cbind( 1,x_sf_s, x_sf_n))
         bse_vc[ , j ]	<- sqrt( colSums( t( x_sf ) * ( b_cov_sub %*% t( x_sf ) ) ) )
+
+        if( meig$other$fast ){
+          bse_vc[ , j ]<-bse_vc[,j] + bse_vc_adj( meig = meig, bse_vc = bse_vc_s0[,j] )$add
+        }
+
         bb[[ j ]]	    <- b[ bid ]
         bb_cov[[ j ]]	<- b_cov_sub
         evSqrts[[ j ]]<- evSqrt2[[ j ]]
@@ -2848,7 +2893,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
                   Bias=Bias, nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num, sel_basis_c = sel_basis_c, sel_basis_n = sel_basis_n,
                   x = x, xconst = xconst, coords = meig$other$coords, dif=dif, y = y0, tr_num=tr_num, y_nonneg = y_nonneg, y_type = y_type,
                   method=method, y_added = y_added, jackup=jackup, np=np, offset = offset, e_NULL = e_stat_NULL,
-                  w_scale = w_scale,tr_comp=tr_comp)
+                  w_scale = w_scale,tr_comp=tr_comp,par0=par0,b_sub=b_sub)
 
   result    <- list( b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc, B_vc_s = B_vc_s, B_vc_n = B_vc_n,
                      c = b_par, c_vc = bf_vc, cse_vc = bfse_vc, ct_vc = bft_vc, cp_vc = bfp_vc, b_g = bpar_g2,

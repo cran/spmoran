@@ -1,13 +1,12 @@
 
 besf  	<- function( y, x = NULL, nvc = FALSE, nvc_sel = TRUE, coords, s_id = NULL,
                     covmodel="exp", enum = 200, method = "reml", penalty = "bic", nvc_num = 5,
-                    maxiter = 30, bsize = 4000, cl = NULL ){
+                    maxiter = 30, bsize = 4000, ncores = NULL ){
 
   res   <- besf_vc( y = y, x = NULL, xconst = x, coords = coords, s_id = NULL,
-                    x_nvc = FALSE, xconst_nvc = nvc, nvc_num=nvc_num,
                     x_sel = FALSE, x_nvc_sel = FALSE,xconst_nvc_sel = nvc_sel,
                     method = method, penalty = penalty, covmodel=covmodel,
-                    enum = enum, maxiter = maxiter, bsize = bsize, cl = cl )
+                    enum = enum, maxiter = maxiter, bsize = bsize, ncores = ncores )
 
   b     <- res$c
   #b_g   <- res$b_g

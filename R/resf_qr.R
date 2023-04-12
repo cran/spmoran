@@ -1,4 +1,4 @@
-resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=NULL ){
+resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, ncores=NULL ){
 
   resf_00  	<- function( y, x = NULL, xgroup = NULL, meig, method = "reml" ){
 
@@ -358,12 +358,12 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
     	}
     	M	<- as.matrix( rbind( cbind( XX, t( EX ) ), cbind( EX, EE ) ) )
 
-    	if(is.null(cl)) {
-    	  cl <- makeCluster(detectCores(),setup_strategy = "sequential")
+    	if(is.null(ncores)) {
+    	  ncores <- makeCluster(detectCores(),setup_strategy = "sequential")
     	} else {
-    	  cl <- makeCluster(cl,setup_strategy = "sequential")
+    	  ncores <- makeCluster(ncores,setup_strategy = "sequential")
     	}
-    	registerDoParallel(cl)
+    	registerDoParallel(ncores)
     }
 
     SFb  	<- NULL
@@ -437,7 +437,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, cl=
       names( SFs_boot ) <- names( SFs_boot2 ) <- tau_name2
       res   <- list( b = SFb, r = SFr, s = SFs, e = SFe, B0 = SFb_boot,
                      S0 = SFs_boot, B = SFb_boot2, S = SFs_boot2, tau = tau, call = match.call() )
-      stopCluster( cl )
+      stopCluster( ncores )
     }
 
     class(res)<-"resf_qr"

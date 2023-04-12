@@ -5,8 +5,8 @@ weigen <-function( x = NULL, type = "knn", k = 4,
     nb2mat2 <- function( nb, n = n ){
 
       listw     <- nb2listw( nb, style = "B" )$neighbours
-      listw2    <-cbind( 0, unlist( listw ) )
-      listw2_len<-sapply( listw, length )
+      listw2    <- cbind( 0, unlist( listw ) )
+      listw2_len<- sapply( listw, length )
       id_id	    <- 1
       for( i in 1:n ){
         id_end	<- id_id + listw2_len[ i ] - 1
@@ -14,7 +14,6 @@ weigen <-function( x = NULL, type = "knn", k = 4,
         id_id	<- id_end + 1
       }
 
-      #C   <- as( spMatrix( n, n ), "dgCMatrix" )
       C   <- sparseMatrix(i={},j={},dims=c(n,n),x=0)
       C[ listw2 ]<-1
       return(C)
@@ -40,7 +39,7 @@ weigen <-function( x = NULL, type = "knn", k = 4,
         polys <- NULL
         cmat  <- x
       }
-    } else if( "SpatialPolygons" %in% is( x ) ){
+    } else if( "sf" %in% is( x ) ){#SpatialPolygons
       coords  <- NULL
       polys   <- x
       cmat    <- NULL
@@ -71,7 +70,7 @@ weigen <-function( x = NULL, type = "knn", k = 4,
 
     } else {
           message( "----------- Adjacency-based W ----------" )
-        n     <- length( polys )
+        n     <- dim(polys)[ 1 ]#length( polys )
         nb	  <- poly2nb( polys )
         cmat  <- nb2mat2( nb = nb, n = n )
         if( is.null( coords ) == FALSE ){

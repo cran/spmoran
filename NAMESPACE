@@ -8,11 +8,11 @@ importFrom(FNN, get.knnx)
 importFrom(parallel, makeCluster, detectCores, stopCluster)
 importFrom(doParallel, registerDoParallel)
 importFrom(foreach, foreach, "%dopar%")
+importFrom(sf, st_as_sf)
 import(ggplot2)
 import(splines)
 import(methods)
-import(sp)
-importFrom("stats", "median", "cor", "kmeans", "lm", "logLik",
+importFrom("stats", "median", "cor", "kmeans", "lm", "logLik","cov.wt",
              "predict", "pt", "residuals", "sd", "approx",
            "density", "quantile", "rnorm", "optim", "pnorm","qnorm","dnorm",
            "optimize","dist","aggregate","approxfun","weighted.mean")

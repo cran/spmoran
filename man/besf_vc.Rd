@@ -5,7 +5,7 @@
 besf_vc( y, x, xconst = NULL, coords, s_id = NULL, x_nvc = FALSE, xconst_nvc = FALSE,
          x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num=5,
          method = "reml", penalty = "bic", maxiter = 30,
-         covmodel="exp",enum = 200, bsize = 4000, cl=NULL )
+         covmodel="exp",enum = 200, bsize = 4000, ncores=NULL )
 }
 \description{
 Memory-free implementation of SNVC modeling for very large samples. The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), and SNVC (= SVC + NVC). Type of coefficients can be selected through BIC/AIC minimization. By default, it estimates a SVC model.
@@ -30,7 +30,7 @@ Note: SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robus
 \item{covmodel}{Type of kernel to model spatial dependence. The currently available options are "exp" for the exponential kernel, "gau" for the Gaussian kernel, and "sph" for the spherical kernel}
 \item{enum}{Number of Moran eigenvectors to be used for spatial process modeling (scalar). Default is 200}
 \item{bsize}{Block/badge size. bsize x bsize elements are iteratively processed during the parallelized computation. Default is 4000}
-\item{cl}{Number of cores used for the parallel computation. If cl = NULL, the number of available cores is detected. Default is NULL}
+\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL, the number of available cores is detected. Default is NULL}
 }
 \value{
 \item{b_vc}{Matrix of estimated SNVC (= SVC + NVC) on x (N x K)}

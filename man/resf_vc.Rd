@@ -6,7 +6,7 @@
 resf_vc(y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = NULL,
         x_nvc = FALSE, xconst_nvc = FALSE, x_sel = TRUE, x_nvc_sel = TRUE,
         xconst_nvc_sel = TRUE, nvc_num = 5, meig, method = "reml",
-        penalty = "bic", maxiter = 30, nongauss = NULL )
+        penalty = "bic", miniter = NULL, maxiter = 30, nongauss = NULL )
 }
 \description{
 This model estimates regression coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), group effects, and residual spatial dependence. The random-effects eigenvector spatial filtering, which is an approximate Gaussian process approach, is used for modeling the spatial process in coefficients and residuals. While the resf_vc function estimates a SVC model by default, the type of coefficients (constant, SVC, NVC, or SNVC) can be selected through a BIC/AIC minimization. The explained variables are transformed to fit the data distribution if nongauss is specified. Thus, this function is available for modeling Gaussian and non-Gaussian continuous data and count data (see \code{\link{nongauss_y}}).
@@ -29,6 +29,7 @@ Note that SNVCs can be mapped just like SVCs. SNVC model is more robust against 
 \item{meig}{Moran eigenvectors and eigenvalues. Output from \code{\link{meigen}} or \code{\link{meigen_f}}}
 \item{method}{Estimation method. Restricted maximum likelihood method ("reml") and maximum likelihood method ("ml") are available. Default is "reml"}
 \item{penalty}{Penalty to select varying coefficients and stablize the estimates. The current options are "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion  (2K). Default is "bic"}
+\item{miniter}{Minimum number of iterations. Default is NULL}
 \item{maxiter}{Maximum number of iterations. Default is 30}
 \item{nongauss}{Parameter setup for modeling non-Gaussian continuous and count data. Output from \code{\link{nongauss_y}}}
 }

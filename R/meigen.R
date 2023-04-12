@@ -1,4 +1,5 @@
-meigen		<- function( coords = NULL, model = "exp", threshold = 0, enum = NULL, cmat = NULL, s_id = NULL ){
+meigen		<- function( coords = NULL, model = "exp", threshold = 0, enum = NULL,
+                     cmat = NULL, s_id = NULL ){
   if( threshold > 1 | threshold < 0 ){
     stop( "threshold must be a value between 0 and 1" )
   } else if ( threshold ==1) {
@@ -17,7 +18,7 @@ meigen		<- function( coords = NULL, model = "exp", threshold = 0, enum = NULL, c
       s_id_dat2<-s_id_dat2[order(s_id_dat2$id),c("s_id", "s_id_num")]
     }
     D	<- rdist( coords )
-    h	<- max( spantree( D )$dist )
+    h	<- max( spantree( D )$dist )#if(is.null(h)) h	<- max( spantree( D )$dist )
     if( model == "exp" ){
       C	<- exp( -D / h )
     } else if( model == "gau" ){
