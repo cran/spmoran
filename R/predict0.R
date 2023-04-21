@@ -232,9 +232,13 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
   if( mod$other$model == "esf" ){
 
     if( is.null( dim( mod$r ) ) ){
-      sf_pred	<- meig0$sf[ mod$other$sf_id] %*% c( mod$r[,1] )
+      sf_pred	<- rep(0, dim(x0)[1])
     } else {
-      sf_pred	<- meig0$sf[ ,mod$other$sf_id ] %*% c( mod$r[,1] )
+      if( length(mod$r[,1]) == 1){
+        sf_pred	<- meig0$sf[ ,mod$other$sf_id ] * c( mod$r[,1] )
+      }else{
+        sf_pred	<- meig0$sf[ ,mod$other$sf_id ] %*% c( mod$r[,1] )
+      }
     }
 
     x0        <- as.matrix(x0)
@@ -262,14 +266,20 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
       }
     }
     c_vc  <- cse_vc <- ct_vc <- cp_vc <- NULL
+    res      <- pred
+    pq_dat   <- NULL
 
 
   } else {
 
     if( is.null( dim( mod$r ) ) ){
-      sf_pred	<- meig0$sf %*% c( mod$r )
+      sf_pred	<- rep(0, dim(x0)[1])
     } else {
-      sf_pred	<- meig0$sf %*% c( mod$r[, 1 ] )
+      if( length(mod$r[,1]) == 1){
+        sf_pred	<- meig0$sf * c( mod$r[,1] )
+      }else{
+        sf_pred	<- meig0$sf %*% c( mod$r[, 1 ] )
+      }
     }
     n0        <- length( c(sf_pred) )
 
