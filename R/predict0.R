@@ -2,9 +2,8 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
                         weight0 = NULL, compute_se=FALSE,
                         compute_quantile = FALSE ){
 
-  #if( (class( mod ) !="resf")&(class( mod ) !="esf") ){
   if( (inherits(mod, "resf")==FALSE)&(inherits( mod, "esf")==FALSE) ){
-      stop("Error: Input model must be an output from resf or esf function")
+    stop("Error: Input model must be an output from resf or esf function")
   }
 
   {
@@ -228,13 +227,16 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
   n        <-length(mod$other$coords[,1])
   nx       <-mod$other$nx
   eevSqrt  <-mod$other$eevSqrt
-  #null_dum3<-mod$other$null_dum3
   if( mod$other$model == "esf" ){
 
     if( is.null( dim( mod$r ) ) ){
-      sf_pred	<- meig0$sf[ mod$other$sf_id] %*% c( mod$r[,1] )
+      sf_pred	<- rep(0, dim( meig0$sf )[1] )#dim(x0)[1]
     } else {
-      sf_pred	<- meig0$sf[ ,mod$other$sf_id ] %*% c( mod$r[,1] )
+      if( length(mod$r[,1]) == 1){
+        sf_pred	<- meig0$sf[ ,mod$other$sf_id ] * c( mod$r[,1] )
+      }else{
+        sf_pred	<- meig0$sf[ ,mod$other$sf_id ] %*% c( mod$r[,1] )
+      }
     }
 
     x0        <- as.matrix(x0)
@@ -262,14 +264,20 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
       }
     }
     c_vc  <- cse_vc <- ct_vc <- cp_vc <- NULL
+    res      <- pred
+    pq_dat   <- NULL
 
 
   } else {
 
     if( is.null( dim( mod$r ) ) ){
-      sf_pred	<- meig0$sf %*% c( mod$r )
+      sf_pred	<- rep(0, dim( meig0$sf )[1] )#dim(x0)[1]
     } else {
-      sf_pred	<- meig0$sf %*% c( mod$r[, 1 ] )
+      if( length(mod$r[,1]) == 1){
+        sf_pred	<- meig0$sf * c( mod$r[,1] )
+      }else{
+        sf_pred	<- meig0$sf %*% c( mod$r[, 1 ] )
+      }
     }
     n0        <- length( c(sf_pred) )
 
@@ -668,4 +676,3 @@ predict0   <- function( mod, meig0, x0 = NULL, xgroup0 = NULL, offset0 = NULL,
                   c_vc = c_vc, cse_vc =cse_vc, ct_vc = ct_vc, cp_vc = cp_vc )
   return( result )
 }
-
