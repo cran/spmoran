@@ -1135,6 +1135,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   nsv	  <- ifelse( is.null( X1 ),1, dim( X1 )[ 2 ] + 1 )
   nev0	<- min( round( n /nsv ) - 2, length( meig$ev ))
   nev0  <- max(nev0, 3)
+    if(length( meig$ev )<nev0){
+    nev0 <- length( meig$ev )
+  }
   meig$sf	<- meig$sf[ , 1 : nev0 ]
   meig$ev	<- meig$ev[   1 : nev0 ]
 
