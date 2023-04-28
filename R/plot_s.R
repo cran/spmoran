@@ -1,6 +1,6 @@
 
 plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, ncol = 8, col = NULL,
-                      inv =FALSE, brks = "regular", cex = 1, nmax = 20000 ){
+                      inv =FALSE, brks = "regular", cex = 1, pch = 20, nmax = 20000 ){
 
   pmax0        <- pmax
   xnum         <- xnum + 1
@@ -85,7 +85,7 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
 
   } else {
 
-    test<-try(pp  <-plot( dd_s[dd[,nx + xnum+2] < pmax, xnum], cex=cex, pal = palette, key.pos = 4, pch = 20,
+    test<-try(pp  <-plot( dd_s[dd[,nx + xnum+2] < pmax, xnum], cex=cex, pal = palette, key.pos = 4, pch = pch,
                           breaks = cols, xlim=xlim, ylim=ylim, axes=TRUE), silent=TRUE )
     #test<-try(pp  <-spplot( dd[dd[,nx + xnum+2] < pmax,], xnum, colorkey=TRUE, cex=cex, col.regions = palette,
     #                        cuts = cols, col = "transparent",xlim=xlim, ylim=ylim,main=names(dd)[xnum]),silent=TRUE)
@@ -93,9 +93,9 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
       names(dd)[xnum+2]<-paste( "x", xnum+2, sep = "" )
       #pp  <-spplot( dd[dd[,nx + xnum+2] < pmax,], xnum, colorkey=TRUE, cex=cex, col.regions = palette,
       #              cuts = cols, col = "transparent",xlim=xlim, ylim=ylim,main=names(dd)[xnum])
-      pp  <-plot( dd_s[dd[,nx + xnum+2] < pmax, xnum], cex=cex, pal = palette, key.pos = 4, pch = 20,
+      pp  <-plot( dd_s[dd[,nx + xnum+2] < pmax, xnum], cex=cex, pal = palette, key.pos = 4, pch = pch,
                   breaks = cols, xlim=xlim, ylim=ylim, axes=TRUE)
-      message( "Note: Covariate name is changed to aviod error caused by special characters" )
+      message( "Note: Covariate name is changed to aviod error due to special characters" )
     }
 
     if( sum(dd[,nx + xnum + 2] < pmax)==0 ){

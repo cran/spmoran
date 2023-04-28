@@ -67,11 +67,12 @@ meigen_f	<- function( coords, model = "exp", enum = 200, s_id = NULL ){
       #Cmean   <- Cmean[ s_id_dat2$s_id_num ]
       coords  <- coords0
     }
+    sfsf       <- rowSums( sf_ap *sf_ap )
 
     sf0	<- as.matrix( sf0   [ , ev_full > 1e-08 ] )
     ev0	<- ev0   [   ev_full > 1e-08 ] -1
     other	<- list( coordk = coordk, sfk = sf0, evk = ev0, Cmean = Cmean, h = h, model = model, fast = 1,
-                   coords = coords, s_id = s_id)
+                   coords = coords, s_id = s_id, sfsf=sfsf)
 
     mes	<- paste( " ", length( ev_ap ), "/", nn, " eigen-pairs are approximated", sep = "" )
     message( mes )

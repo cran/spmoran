@@ -3,7 +3,7 @@
 \title{Mapping spatially (and non-spatially) varying coefficients (SVCs or SNVC)}
 \usage{
 plot_s( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, ncol = 8,
-        col = NULL, inv =FALSE, brks = "regular", cex = 1, nmax = 20000)
+        col = NULL, inv =FALSE, brks = "regular", cex = 1, pch = 20, nmax = 20000)
 }
 \description{
 This function plots spatially and non-spatially varying coefficients (SNVC) or spatially varying coefficients (SVC). Note that SNVC = SVC + NVC (NVC is a coefficient varying with respect to explanatory variable value)
@@ -19,6 +19,7 @@ This function plots spatially and non-spatially varying coefficients (SNVC) or s
 \item{inv}{If TRUE, the color palett is inverted. Default is FALSE}
 \item{brks}{If "regular", color is changed at regular intervals. If "quantile", color is changed for each quantile}
 \item{cex}{Size of the dots representing sample sites}
+\item{pch}{A number indicating the symbol to use}
 \item{nmax}{If sample size exceeds nmax, nmax samples are randomly selected and plotted. Default is 20,000}
 }
 \seealso{
