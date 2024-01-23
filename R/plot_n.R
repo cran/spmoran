@@ -31,7 +31,7 @@ plot_n <- function( mod, xnum = 1, xtype = "x", cex.lab = 20,
   } else if( inherits( mod, "resf")|inherits( mod, "besf") ){
     bvc   <- list( mod$c_vc, mod$cse_vc )
     xnum_b <- xnum
-    xnum_x <- xnum
+    xnum_x <- xnum+1
     Covariate<-mod$other$x[, xnum_x]
   }
 

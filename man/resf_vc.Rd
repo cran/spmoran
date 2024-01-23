@@ -11,16 +11,18 @@ resf_vc(y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = NULL,
 \description{
 This model estimates regression coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), SNVC (= SVC + NVC), group effects, and residual spatial dependence. The random-effects eigenvector spatial filtering, which is an approximate Gaussian process approach, is used for modeling the spatial process in coefficients and residuals. While the resf_vc function estimates a SVC model by default, the type of coefficients (constant, SVC, NVC, or SNVC) can be selected through a BIC/AIC minimization. The explained variables are transformed to fit the data distribution if nongauss is specified. Thus, this function is available for modeling Gaussian and non-Gaussian continuous data and count data (see \code{\link{nongauss_y}}).
 
-Note that SNVCs can be mapped just like SVCs. SNVC model is more robust against spurious correlation (multicollinearity) and stable than SVC models (see Murakami and Griffith, 2020).
+Note 1: SNVCs can be mapped just like SVCs. SNVC model is more robust against spurious correlation (multicollinearity) and stable than SVC models (see Murakami and Griffith, 2020).
+
+Note 2: The SVC model can be less accurate for large samples due to a degeneracy/over-smoothing problem (see Murakami et al., 2023). The \code{\link{addlearn_local}} is useful to mitigate this problem (See the coding example below).
 }
 \arguments{
 \item{y}{Vector of explained variables (N x 1)}
-\item{x}{Matrix of explanatory variables with spatially varying coefficients (SVC) (N x K)}
-\item{xconst}{Matrix of explanatory variables with constant coefficients (N x K_{c}). Default is NULL}
-\item{xgroup}{Matrix of group IDs. The IDs may be group numbers or group names (N x K_{g}). Default is NULL}
-\item{weight}{Vector of weights for samples (N x 1). When non-NULL, the adjusted R-squared value is evaluated for weighted explained variables. Default is NULL}
+\item{x}{Matrix of explanatory variables assuming spatially varying coefficients (SVC) (N x K)}
+\item{xconst}{Matrix of explanatory variables assuming constant coefficients (N x K_c). Default is NULL}
+\item{xgroup}{Matrix of group IDs for modeling group-wise random effects. The IDs may be group numbers or group names (N x K_g). Default is NULL}
+\item{weight}{Vector of weights for samples (N x 1). If non-NULL, the adjusted R-squared value is evaluated for weighted explained variables. Default is NULL}
 \item{offset}{Vector of offset variables (N x 1). Available if y is count (y_type = "count" is specified in the \code{\link{nongauss_y}} function). Default is NULL}
-\item{x_nvc}{If TRUE, SNVCs are assumed on x. Otherwise, SVCs are assumed. Default is FALSE}
+\item{x_nvc}{If TRUE, SNVCs are assumed on x (i.e., a non-linear function of x is added on each SVC to robustify the estimate). Otherwise, SVCs are assumed. Default is FALSE}
 \item{xconst_nvc}{If TRUE, NVCs are assumed on xconst. Otherwise, constant coefficients are assumed. Default is FALSE}
 \item{x_sel}{If TRUE, type of coefficient (SVC or constant) on x is selected through a BIC (default) or AIC minimization. If FALSE, SVCs are assumed across x. Alternatively, x_sel can be given by column number(s) of x. For example, if x_sel = 2, the coefficient on the second explanatory variable in x is SVC and the other coefficients are constants. The Default is TRUE}
 \item{x_nvc_sel}{If TRUE, type of coefficient (NVC or constant) on x is selected through the BIC (default) or AIC minimization. If FALSE, NVCs are assumed across x. Alternatively, x_nvc_sel can be given by column number(s) of x. For example, if x_nvc_sel = 2, the coefficient on the second explanatory variable in x is NVC and the other coefficients are constants. The Default is TRUE}
@@ -28,7 +30,7 @@ Note that SNVCs can be mapped just like SVCs. SNVC model is more robust against 
 \item{nvc_num}{Number of basis functions used to model NVC. An intercept and nvc_num natural spline basis functions are used to model each NVC. Default is 5}
 \item{meig}{Moran eigenvectors and eigenvalues. Output from \code{\link{meigen}} or \code{\link{meigen_f}}}
 \item{method}{Estimation method. Restricted maximum likelihood method ("reml") and maximum likelihood method ("ml") are available. Default is "reml"}
-\item{penalty}{Penalty to select varying coefficients and stablize the estimates. The current options are "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion  (2K). Default is "bic"}
+\item{penalty}{Penalty for model estimation and selection. "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion  (2K). Default is "bic"}
 \item{miniter}{Minimum number of iterations. Default is NULL}
 \item{maxiter}{Maximum number of iterations. Default is 30}
 \item{nongauss}{Parameter setup for modeling non-Gaussian continuous and count data. Output from \code{\link{nongauss_y}}}
@@ -43,15 +45,15 @@ This function estimates Gaussian and non-Gaussian spatial model for continuous a
 \item{p_vc}{Matrix of p-values for the SNVCs on x (N x K)}
 \item{B_vc_s}{List summarizing estimated SVCs (in SNVC) on x. The four elements are the SVCs (N x K), the standard errors (N x K), t-values (N x K), and p-values (N x K), respectively}
 \item{B_vc_n}{List summarizing estimated NVCs (in SNVC) on x. The four elements are the NVCs (N x K), the standard errors (N x K), t-values (N x K), and p-values (N x K), respectively}
-\item{c}{Matrix with columns for the estimated coefficients on xconst, their standard errors, t-values, and p-values (K_{c} x 4). Effective if xconst_nvc = FALSE}
-\item{c_vc}{Matrix of estimated NVCs on xconst (N x K_{c}). Effective if xconst_nvc = TRUE}
-\item{cse_vc}{Matrix of standard errors for the NVCs on xconst (N x k_{c}). Effective if xconst_nvc = TRUE}
-\item{ct_vc}{Matrix of t-values for the NVCs on xconst (N x K_{c}). Effective if xconst_nvc = TRUE}
-\item{cp_vc}{Matrix of p-values for the NVCs on xconst (N x K_{c}). Effective if xconst_nvc = TRUE}
-\item{b_g}{List of K_{g} matrices with columns for the estimated group effects, their standard errors, and t-values}
-\item{s}{List of variance parameters in the SNVC (SVC + NVC) on x. The first element is a 2 x K matrix summarizing variance parameters for SVC. The (1, k)-th element is the standard error of the k-th SVC, while the (2, k)-th element is the Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (strongest spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked. The second element of s is the vector of standard errors of the NVCs}
-\item{s_c}{Vector of standard errors of the NVCs on xconst}
-\item{s_g}{Vector of standard errors of the group effects}
+\item{c}{Matrix with columns for the estimated coefficients on xconst, their standard errors, t-values, and p-values (K_c x 4). Effective if xconst_nvc = FALSE}
+\item{c_vc}{Matrix of estimated NVCs on xconst (N x K_c). Effective if xconst_nvc = TRUE}
+\item{cse_vc}{Matrix of standard errors for the NVCs on xconst (N x k_c). Effective if xconst_nvc = TRUE}
+\item{ct_vc}{Matrix of t-values for the NVCs on xconst (N x K_c). Effective if xconst_nvc = TRUE}
+\item{cp_vc}{Matrix of p-values for the NVCs on xconst (N x K_c). Effective if xconst_nvc = TRUE}
+\item{b_g}{List of K_g matrices with columns for the estimated group effects, their standard errors, and t-values}
+\item{s}{List of variance parameters in the SNVC (SVC + NVC) on x. The first element is a 2 x K matrix summarizing variance parameters for SVC. The (1, k)-th element is the standard deviation of the k-th SVC, while the (2, k)-th element is the Moran's I value that  is scaled to take a value between 0 (no spatial dependence) and 1 (strongest spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked. The second element of s is the vector of standard deviations of the NVCs}
+\item{s_c}{Vector of standard deviations of the NVCs on xconst}
+\item{s_g}{Vector of standard deviations of the group effects}
 \item{vc}{List indicating whether SVC/NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed (replaced with constant) whreas 0 indicates removed}
 \item{e}{Error statistics. When y_type="continuous", it includes residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). rlogLik is replaced with log-likelihood (logLik) if method = "ml". resid_SE is replaced with the residual standard error for the transformed y (resid_SE_trans) if nongauss is specified. When y_type="count", the error statistics includes root mean squared error (RMSE), Gaussian likelihood approximating the model, AIC and BIC based on the likelihood, and the proportion of the null deviance explained by the model (deviance explained (\%)). deviance explained, which is also used in the mgcv package, corresponds to the adjusted R2 in case of the linear regression}
 \item{pred}{Matrix of predicted values for y (pred) and their standard errors (pred_se) (N x 2). If y is transformed by specifying \code{\link{nongauss_y}}, the predicted values in the transformed/normalized scale are added as another column named pred_trans}
@@ -77,7 +79,7 @@ Griffith, D. A. (2003) Spatial autocorrelation and spatial filtering: gaining un
 Daisuke Murakami
 }
 \seealso{
-\code{\link{meigen}}, \code{\link{meigen_f}}, \code{\link{coef_marginal}}, \code{\link{besf_vc}}
+\code{\link{meigen}}, \code{\link{meigen_f}}, \code{\link{coef_marginal}}, \code{\link{besf_vc}}, \code{\link{addlearn_local}}
 }
 \examples{
 require(spdep)
@@ -102,6 +104,14 @@ plot_s(res,0) # Spatially varying intercept
 plot_s(res,1) # 1st SVC (Not shown because the SVC is estimated constant)
 plot_s(res,2) # 2nd SVC
 
+### For large samples (n > 5,000), the following additional learning
+### mitigates an degeneracy/over-smoothing problem in SVCs
+# res_adj<- addlearn_local(res)
+# res_adj
+# plot_s(res_adj,0)
+# plot_s(res_adj,1)
+# plot_s(res_adj,2)
+
 #### SVC on x #######################################
 
 #res2	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig, x_sel = FALSE )
@@ -111,6 +121,7 @@ plot_s(res,2) # 2nd SVC
 
 #meig_g <- meigen(coords, s_id=xgroup)
 #res3	  <- resf_vc(y=y,x=x,xconst=xconst,meig=meig_g,xgroup=xgroup)
+
 
 #####################################################
 ############## Gaussian SNVC models #################

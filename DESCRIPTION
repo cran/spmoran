@@ -1,11 +1,11 @@
 Package: spmoran
 Type: Package
 Title: Fast Spatial Regression using Moran Eigenvectors
-Version: 0.2.2.9
-Date: 2023-04-29
+Version: 0.2.3
+Date: 2024-01-23
 Author: Daisuke Murakami <dmuraka@ism.ac.jp>
 Maintainer: Daisuke Murakami <dmuraka@ism.ac.jp>
-Description: Functions for estimating spatial varying coefficient models, mixed models, and other spatial regression models for Gaussian and non-Gaussian data. Moran eigenvectors are used to an approximate Gaussian process modeling which is interpretable in terms of the Moran coefficient. The GP is used for modeling the spatial processes in residuals and regression coefficients. For details see Murakami (2021) <arXiv:1703.04467>.
+Description: Functions for estimating spatial varying coefficient models, mixed models, and other spatial regression models for Gaussian and non-Gaussian data. Moran eigenvectors are used to an approximate spatial Gaussian processes. These processes are used for modeling the spatial processes in residuals and regression coefficients. For details see Murakami (2021) <arXiv:1703.04467>.
 License: GPL (>= 2)
 Encoding: UTF-8
 Imports: sf, fields, vegan, Matrix, doParallel, foreach, ggplot2,
@@ -13,6 +13,6 @@ Imports: sf, fields, vegan, Matrix, doParallel, foreach, ggplot2,
 Suggests: R.rsp,
 VignetteBuilder: R.rsp
 NeedsCompilation: no
-Packaged: 2023-04-28 17:39:25 UTC; murakami
+Packaged: 2024-01-23 17:11:58 UTC; dmura
 Repository: CRAN
-Date/Publication: 2023-04-28 21:10:09 UTC
+Date/Publication: 2024-01-23 17:40:02 UTC

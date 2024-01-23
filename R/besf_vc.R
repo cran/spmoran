@@ -460,7 +460,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
   ids   <- unique(c(round(seq(1,n,len=nblock+1)),n))
 
   if(is.null(ncores)) {
-    ncores <- makeCluster(detectCores(),setup_strategy = "sequential")
+    ncores <- makeCluster(detectCores()-1,setup_strategy = "sequential")
   } else {
     ncores <- makeCluster(ncores,setup_strategy = "sequential")
   }
@@ -767,7 +767,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
         }
 
         if( n_omit0 > 0 ){
-          message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates (dummy variable in x is a typical cause)", sep = "" ) )
+          message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates", sep = "" ) )
         }
         n_omit	<- c( n_omit, n_omit0 )
 
@@ -1307,7 +1307,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
   parV		  <- parV * sqrt( sig )
   sf_par		<- data.frame( rbind( parV, moran_vc ) )
   names( sf_par )	<- c( "(Intercept)", xname )
-  rownames( sf_par )<- c( "random_SE", "Moran.I/max(Moran.I)" )
+  rownames( sf_par )<- c( "random_SD", "Moran.I/max(Moran.I)" )
 
   e_stat		<- data.frame( stat = c( sqrt( sig ), r2, loglik, AIC, BIC ) )
   rownames( e_stat ) <- c( "resid_SE", "adjR2(cond)", lik_nam, "AIC", "BIC")
@@ -1322,7 +1322,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
 
     parN		<- t( parNsv * sqrt( sig ) )
     bn_par	<- data.frame( parN )
-    rownames( bn_par )	<- "random_SE"
+    rownames( bn_par )	<- "random_SD"
     names( bn_par )	<- xxname
     s_n    <- bn_par
 
@@ -1346,25 +1346,26 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     vc        <- list( vc, vc_n )
     parNf		  <- t( parNxf * sqrt( sig ) )
     bnf_par		<- data.frame( parNf )
-    rownames( bnf_par )	<- "random_SE"
+    rownames( bnf_par )	<- "random_SD"
     names( bnf_par )	  <- xxfname
     s_nxconst<- bnf_par
   }
 
   if( sum( n_omit ) >5 ) {
     if( e_stat[2,1]> -0.2 ){
-      message( "Note: The model is nearly singular. Consider simplifying the model (dummy variable in x is a typical cause)" )
+      message( "Note: The model is nearly singular. Consider simplifying the model" )
     } else {
-      message( "Note: Singular fit. Simplify the model (dummy variable in x is a typical cause)")
+      message( "Note: Singular fit. Simplify the model")
     }
   } else if( e_stat[2,1]< -0.2 ){
-    message("Note: Singular fit. Simplify the model (dummy variable in x is a typical cause)")
+    message("Note: Singular fit. Simplify the model")
   }
 
   #evSqrt2 # evSqrts = evSqrts, evSqrts_n = evSqrts_n,### b_s = bb, b_covs = bb_cov,
-  other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nxf = nxf, xf_id = xf_id,# df = df,
-                  model = "resf_vc", nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num, method=method,
-                  x = x, xconst = xconst, coords = coords )#, Bias=bias
+  other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nxf = nxf,np=np, xf_id = xf_id,# df = df,
+                  model = "resf_vc", nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num,
+                  method=method, penalty=penalty, y_nonneg =FALSE, w_scale = 1, ncores = ncores,
+                  y = y, x = x, xconst = xconst, coords = coords, weight = NULL )#, Bias=bias
 
   result    <- list( b_vc = b_vc, bse_vc = bse_vc, z_vc = bz_vc, p_vc = bp_vc,
                      B_vc_s = B_vc_s, B_vc_n = B_vc_n, c = b_par, c_vc = c_vc, cse_vc = cse_vc,

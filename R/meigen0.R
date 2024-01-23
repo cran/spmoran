@@ -53,5 +53,6 @@ meigen0	<- function( meig, coords0, s_id0 = NULL ){
       sfk		<- sfk[ s_id_dat2$s_id_num,]
   }
 
-return( list( sf = sfk, ev = meig$ev, ev_full = meig$ev_full )  )
+  other = list( coords0 = coords0 )
+  return( list( sf = sfk, ev = meig$ev, ev_full = meig$ev_full, other = other )  )
 }

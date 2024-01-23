@@ -149,7 +149,7 @@ lsem		<-function( y, x, weig, method = "reml" ){
 
   par[ 2 ]	<- par[ 2 ] * sqrt( sig )
   sp_par	<- data.frame( par = par )
-  rownames( sp_par )  <- c( "sp_lambda", "sp_SE" )
+  rownames( sp_par )  <- c( "sp_lambda", "sp_SD" )
   names( sp_par )     <- "Estimates"
   e_stat	<- data.frame( stat = c( sqrt( sig ), r2, loglik, AIC, BIC ) )
   if( method == "reml" ){

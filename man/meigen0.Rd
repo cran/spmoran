@@ -16,6 +16,7 @@ This function estimates Moran eigenvectors at unobserved sites using the Nystrom
 \item{sf}{Matrix of the first L eigenvectors at unobserved sites (N_0 x L)}
 \item{ev}{Vector of the first L eigenvalues (L x 1)}
 \item{ev_full}{Vector of all eigenvalues (N x 1)}
+\item{other}{List of other outputs, which are internally used}
 }
 \references{
 Drineas, P. and Mahoney, M.W. (2005) On the Nystrom method for approximating a gram matrix for improved kernel-based learning. Journal of Machine Learning Research, 6 (2005), 2153-2175.

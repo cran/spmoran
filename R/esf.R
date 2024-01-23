@@ -191,7 +191,7 @@ esf		<-function( y, x = NULL, vif = NULL, meig, fn = "r2" ){
     sf_moran   <-sum(r[,1][len]^2*ev[Sf_sel_l][len])/(ev[1]*sum(r[,1][len]^2))
     sf_par	<- data.frame( par = c( sd(SF), sf_moran )  )
     names( sf_par )   <- "Estimate"
-    rownames( sf_par )<- c( "SE", "Moran.I/max(Moran.I)" )
+    rownames( sf_par )<- c( "SD", "Moran.I/max(Moran.I)" )
 
     r2		  <- summary( sfmod )$adj.r.squared
     loglik	<- logLik( sfmod )

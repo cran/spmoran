@@ -692,7 +692,8 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       weighted_corr <- cov.wt(data.frame(val,sfsf), wt = sfsf, cor = TRUE)
       weighted_corr$cor[1,2]^2
     }
-    opt_v    <- optimize(interval=c(0,1.5),cminfun,sfsf=meig$other$sfsf,bse_vc=bse_vc)
+
+    opt_v    <- optimize(interval=c(0,max(bse_vc^2)),cminfun,sfsf=meig$other$sfsf,bse_vc=bse_vc)
     add      <- sqrt(bse_vc^2 + opt_v$minimum*(1 - meig$other$sfsf )) - bse_vc
 
     return(list(add=add,opt_v=opt_v))
@@ -1505,7 +1506,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         }
 
         if( n_omit0 > 0 ){
-          message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates (dummy variable in x is a typical cause)", sep = "" ) )
+          message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates", sep = "" ) )
         }
         n_omit	<- c( n_omit, n_omit0 )
 
@@ -1749,7 +1750,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
       }
 
       if( n_omit0 > 0 ){
-        message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates (dummy variable in x is a typical cause)", sep = "" ) )
+        message( paste( "Note: ", n_omit0, " eigenvectors are omitted to stablize the estimates", sep = "" ) )
       }
       n_omit	<- c( n_omit, n_omit0 )
 
@@ -1928,6 +1929,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
 
   weight_lik<-weight
+  null_dum3<- c( rep( 0, nx ), null_dum[ id ]) == 0
 
   par2   	<- par0 ^ 2
   evSqrt	<- NULL
@@ -2080,16 +2082,18 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   if( y_type == "continuous"){
     if( !is.null( weight ) ){
       pred0	  <- X_org[ , null_dum3 ] %*% b
-      resid	  <- y - pred0
-      SSE     <- sum( resid ^ 2 )
-      SSY		  <- sum( ( y - mean( y ) ) ^ 2 )
-      sig_org <- SSE /( n - nxx )
 
       wsq_y   <- sqrt(weight)*y
       resid_w <- wsq_y - X[ , null_dum3 ] %*% b
       SSE     <- sum( resid_w ^ 2 )
       SSY		  <- sum( ( wsq_y - mean( wsq_y ) ) ^ 2 )
       sig		  <- SSE /( n - nxx )
+
+      resid	  <- y - pred0
+      SSE     <- sum( resid ^ 2 )
+      SSY		  <- sum( ( y - mean( y ) ) ^ 2 )
+      sig_org <- SSE /( n - nxx )
+
       b_cov		<- sig * MMinv
       b_cov2  <- b_cov[ b!=0, b!=0 ]
       pred0_se0<-sqrt( colSums( t( X3[ , null_dum3 ][ ,b!=0 ] ) *
@@ -2156,6 +2160,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   if( nnsv == 0 ){
     b_vc		  <- matrix( 0, nrow = n, ncol = nsv )
     bse_vc		<- matrix( 0, nrow = n, ncol = nsv )
+    #bse_vc_add<- matrix( 0, nrow = n, ncol = nsv )############## delete it !!!!
     moran_vc  <- rep( 0, nsv )
     bb		    <- list(NULL)
     bb_cov		<- list(NULL)
@@ -2178,7 +2183,9 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
         evSqrts[[ j ]]<- evSqrt2[[ j ]]
 
         if( meig$other$fast ){
-          bse_vc[ , j ]<-bse_vc[,j]+bse_vc_adj( meig=meig,bse_vc=bse_vc[,j] )$add
+          #bse_vc_add[,j]<-bse_vc_adj( meig=meig,bse_vc=bse_vc[,j] )$add ######### delete it!!!!
+          bse_vc_add    <- bse_vc_adj( meig=meig,bse_vc=bse_vc[,j] )$add
+          bse_vc[ , j ] <-(bse_vc[,j]+bse_vc_add)/mean(bse_vc[,j]+bse_vc_add)*mean(bse_vc[,j])
         }
 
         j0		        <- j0 + 1
@@ -2500,13 +2507,13 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   parV		        <- parV * sqrt( sig )
   sf_par		      <- data.frame( rbind( parV, moran_vc ) )
   names( sf_par )	<- c( "(Intercept)", xname )
-  rownames( sf_par )<- c( "random_SE", "Moran.I/max(Moran.I)" )
+  rownames( sf_par )<- c( "random_SD", "Moran.I/max(Moran.I)" )
 
   s_g             <- NULL
   if( ng != 0 ){
     parG		<- t( parG * sqrt( sig ) )
     bg_par	<- data.frame( parG )
-    rownames( bg_par )	<- "ramdom_SE"
+    rownames( bg_par )	<- "ramdom_SD"
     names( bg_par )	<- names( as.data.frame(xgroup) )
     s_g     <- bg_par
   }
@@ -2521,7 +2528,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
 
     parN		<- t( parNsv * sqrt( sig ) )
     bn_par	<- data.frame( parN )
-    rownames( bn_par )	<- "random_SE"
+    rownames( bn_par )	<- "random_SD"
     names( bn_par )	<- xxname
     s_n    <- bn_par
 
@@ -2545,7 +2552,7 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
     vc        <- list( vc, vc_n )
     parNf		  <- t( parNxf * sqrt( sig ) )
     bnf_par		<- data.frame( parNf )
-    rownames( bnf_par )	<- "random_SE"
+    rownames( bnf_par )	<- "random_SD"
     names( bnf_par )	  <- xxfname
     s_nxconst<- bnf_par
   }
@@ -2555,7 +2562,6 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   ################ pred_quantile
   pquant        <- c(0.01, 0.025, 0.05, seq(0.1,0.9,0.1), 0.95, 0.975, 0.99)
   pquant2       <- seq(0.001,0.999,0.001)
-
   pq_dat0       <- NULL
   for(pq in pquant){
     pq_dat0     <- cbind(pq_dat0,qnorm(pq,pred0,pred0_se))
@@ -2893,12 +2899,14 @@ resf_vc	  <- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset
   #}
 
   other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nx=nx, nxf = nxf, xf_id = xf_id, df = df,null_dum3=null_dum3,
-                  b_s = bb, b_covs = bb_cov, B_covs = b_cov2, sig = sig, sig_org=sig_org ,xg_levels = xg_levels, is_weight = !is.null( weight ),
+                  b_s = bb, b_covs = bb_cov, B_covs = b_cov2, sig = sig, sig_org=sig_org ,xg_levels = xg_levels,
+                  weight = weight, is_weight = !is.null( weight ),idd=idd,
                   eevSqrt=eevSqrt, evSqrts = evSqrts, evSqrts_n = evSqrts_n, evSqrts_c = evSqrts_c, model = "resf_vc", b_c = bf_s, b_covs_c = bf_covs,
                   Bias=Bias, nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num, sel_basis_c = sel_basis_c, sel_basis_n = sel_basis_n,
-                  x = x, xconst = xconst, coords = meig$other$coords, dif=dif, y = y0, tr_num=tr_num, y_nonneg = y_nonneg, y_type = y_type,
-                  method=method, y_added = y_added, jackup=jackup, np=np, offset = offset, e_NULL = e_stat_NULL,
+                  y = y, x = x, xconst = xconst, coords = meig$other$coords, dif=dif, y0 = y0, tr_num=tr_num, y_nonneg = y_nonneg, y_type = y_type,
+                  method=method, penalty=penalty, y_added = y_added, jackup=jackup, np=np, offset = offset, e_NULL = e_stat_NULL,
                   w_scale = w_scale,tr_comp=tr_comp,par0=par0,b_sub=b_sub)
+                  #,bse_vc_add=bse_vc_add)###### delete it!!!(bse_vc_add)
 
   result    <- list( b_vc = b_vc, bse_vc = bse_vc, t_vc = bt_vc, p_vc = bp_vc, B_vc_s = B_vc_s, B_vc_n = B_vc_n,
                      c = b_par, c_vc = bf_vc, cse_vc = bfse_vc, ct_vc = bft_vc, cp_vc = bfp_vc, b_g = bpar_g2,
@@ -2966,7 +2974,7 @@ print.resf_vc <- function(x, ...)
     print(x$s_g)
   }
 
-  if( !is.null(x$skew_kurt)|!is.null(x$tr_bpar) ){
+  if( (x$skew_kurt$Estimates[1]!=0)|(x$skew_kurt$Estimates[2]!=0)|!is.null(x$tr_bpar) ){
     cat("\n----Estimated probability distribution of y--------------\n")
     if( !is.null(x$skew_kurt) ) print(x$skew_kurt)
     if( !is.null(x$tr_bpar) & x$other$y_type =="continuous" ){

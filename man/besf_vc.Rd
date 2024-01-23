@@ -8,14 +8,14 @@ besf_vc( y, x, xconst = NULL, coords, s_id = NULL, x_nvc = FALSE, xconst_nvc = F
          covmodel="exp",enum = 200, bsize = 4000, ncores=NULL )
 }
 \description{
-Memory-free implementation of SNVC modeling for very large samples. The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), and SNVC (= SVC + NVC). Type of coefficients can be selected through BIC/AIC minimization. By default, it estimates a SVC model.
+Parallel and memory-free implementation of SNVC modeling for very large samples. The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), and SNVC (= SVC + NVC). Type of coefficients can be selected through BIC/AIC minimization. By default, it estimates a SVC model. SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robust against spurious correlation (multicollinearity), so, stable (see Murakami and Griffith, 2020).
 
-Note: SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robust against spurious correlation (multicollinearity), so, stable (see Murakami and Griffith, 2020).
+Note: The SVC model can be less accurate for large samples due to a degeneracy/over-smoothing problem (see Murakami et al., 2023). The \code{\link{addlearn_local}} is useful to mitigate this problem (See the coding example below).
 }
 \arguments{
 \item{y}{Vector of explained variables (N x 1)}
 \item{x}{Matrix of explanatory variables with spatially varying coefficients (SVC) (N x K)}
-\item{xconst}{Matrix of explanatory variables with constant coefficients (N x K_{c}). Default is NULL}
+\item{xconst}{Matrix of explanatory variables with constant coefficients (N x K_c). Default is NULL}
 \item{coords}{Matrix of spatial point coordinates (N x 2)}
 \item{s_id}{Optional. ID specifying groups modeling spatially dependent process (N x 1). If it is specified, group-level spatial process is estimated. It is useful for multilevel modeling (s_id is given by the group ID) and panel data modeling (s_id is given by individual location id). Default is NULL}
 \item{x_nvc}{If TRUE, SNVCs are assumed on x. Otherwise, SVCs are assumed. Default is FALSE}
@@ -39,13 +39,13 @@ Note: SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robus
 \item{p_vc}{Matrix of p-values for the SNVCs on x (N x K)}
 \item{B_vc_s}{List summarizing estimated SVCs (in SNVC) on x. The four elements are the SVCs (N x K), the standard errors (N x K), z-values (N x K), and p-values (N x K), respectively}
 \item{B_vc_n}{List summarizing estimated NVCs (in SNVC) on x. The four elements are the NVCs (N x K), the standard errors (N x K), z-values (N x K), and p-values (N x K), respectively}
-\item{c}{Matrix with columns for the estimated coefficients on xconst, their standard errors, z-values, and p-values (K_{c} x 4). Effective if xconst_nvc = FALSE}
-\item{c_vc}{Matrix of estimated NVCs on xconst (N x K_{c}). Effective if xconst_nvc = TRUE}
-\item{cse_vc}{Matrix of standard errors for the NVCs on xconst (N x k_{c}). Effective if xconst_nvc = TRUE}
-\item{cz_vc}{Matrix of z-values for the NVCs on xconst (N x K_{c}). Effective if xconst_nvc = TRUE}
-\item{cp_vc}{Matrix of p-values for the NVCs on xconst (N x K_{c}). Effective if xconst_nvc = TRUE}
-\item{s}{List of variance parameters in the SNVC (SVC + NVC) on x. The first element is a 2 x K matrix summarizing variance parameters for SVC. The (1, k)-th element is the standard error of the k-th SVC, while the (2, k)-th element is the Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (strongest spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked. The second element of s is the vector of standard errors of the NVCs}
-\item{s_c}{Vector of standard errors of the NVCs on xconst}
+\item{c}{Matrix with columns for the estimated coefficients on xconst, their standard errors, z-values, and p-values (K_c x 4). Effective if xconst_nvc = FALSE}
+\item{c_vc}{Matrix of estimated NVCs on xconst (N x K_c). Effective if xconst_nvc = TRUE}
+\item{cse_vc}{Matrix of standard errors for the NVCs on xconst (N x K_c). Effective if xconst_nvc = TRUE}
+\item{cz_vc}{Matrix of z-values for the NVCs on xconst (N x K_c). Effective if xconst_nvc = TRUE}
+\item{cp_vc}{Matrix of p-values for the NVCs on xconst (N x K_c). Effective if xconst_nvc = TRUE}
+\item{s}{List of variance parameters in the SNVC (SVC + NVC) on x. The first element is a 2 x K matrix summarizing variance parameters for SVC. The (1, k)-th element is the standard deviation of the k-th SVC, while the (2, k)-th element is the Moran's I value that is scaled to take a value between 0 (no spatial dependence) and 1 (strongest spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked. The second element of s is the vector of standard deviations of the NVCs}
+\item{s_c}{Vector of standard deviations of the NVCs on xconst}
 \item{vc}{List indicating whether SVC/NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed (replaced with constant) whreas 0 indicates removed}
 \item{e}{Vector whose elements are residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). When method = "ml", restricted log-likelihood (rlogLik) is replaced with log-likelihood (logLik)}
 \item{pred}{Vector of predicted values (N x 1)}
@@ -67,7 +67,7 @@ Murakami, D., and Griffith, D.A. (2020) Balancing spatial and non-spatial variat
 Daisuke Murakami
 }
 \seealso{
-\code{\link{resf_vc}}
+\code{\link{resf_vc}}, \code{\link{addlearn_local}}
 }
 \examples{
 require(spdep)
@@ -85,6 +85,15 @@ coords  <- boston.c[,c("LON", "LAT")]
 #plot_s(res,0) # Spatially varying intercept
 #plot_s(res,1) # 1st SVC
 #plot_s(res,2) # 2nd SVC
+#
+######## For large samples (n > 5,000), the following additional learning
+######## mitigates an degeneracy/over-smoothing problem in SVCs
+#res1     <- addlearn_local(res)
+#res1
+#plot_s(res1,0) # Spatially varying intercept
+#plot_s(res1,1) # 1st SVC
+#plot_s(res1,2) # 2nd SVC
+
 
 ############## SVC modeling2 #################
 ######## (SVC or constant coefficients on x; Constant coefficients on xconst)

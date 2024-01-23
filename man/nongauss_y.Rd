@@ -14,7 +14,7 @@ Parameter setup for modeling non-Gaussian continuous data and count data. The SA
 \item{tr_num}{Number of the SAL transformations (SinhArcsinh and Affine, where the use of "L" stems from the "Linear") applied to Gaussianize y. Default is 0}
 }
 \details{
-If tr_num >0, the SAL transformation is iterated tr_num times to Gaussianize y. The SAL transformation is defined as SAL(y)=a+b*sinh(c*arcsinh(y)-d) where {a,b,c,d} are parameters. Based on Rios and Tobar (2019), the iteration of the SAL transformation approximates a wide variety of non-Gaussian distributions without explicitly assuming data distribution. The resf and resf_vc functions return tr_par, which is a list whose k-th element includes the {a,b,c,d} parameters used for the k-th SAL transformation.
+If tr_num >0, the SAL transformation is iterated tr_num times to Gaussianize y. The SAL transformation is defined as SAL(y)=a+b*sinh(c*arcsinh(y)-d) where a,b,c,d are parameters. Based on Rios and Tobar (2019), the iteration of the SAL transformation approximates a wide variety of non-Gaussian distributions without explicitly assuming data distribution. The resf and resf_vc functions return tr_par, which is a list whose k-th element includes the a,b,c,d parameters used for the k-th SAL transformation.
 
 In addition, for non-negative y (y_nonneg = TRUE), the Box-Cox transformation is applied prior to the iterative SAL transformation. tr_num and y_nonneg can be selected by comparing the BIC (or AIC) values across models. This compositionally-warped spatial regression approach is detailed in Murakami et al. (2021).
 

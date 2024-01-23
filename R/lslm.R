@@ -178,7 +178,7 @@ res	<- optim( fn = lik_llslm, c( 0, 1 ), ev=ev,
 
     par[ 2 ]	<- par[ 2 ]# * sqrt( sig )
     sp_par	<- data.frame( par = par )
-    rownames( sp_par ) <- c( "sp_rho", "sp_SE" )
+    rownames( sp_par ) <- c( "sp_rho", "sp_SD" )
     names( sp_par ) <- c( "Estimates" )
     e_stat	<- data.frame( stat = c( sqrt( sig ), r2, loglik, AIC, BIC ) )
     if( method == "reml" ){

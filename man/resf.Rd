@@ -12,7 +12,7 @@ This model estimates regression coefficients, coefficients varying depending on 
 \arguments{
 \item{y}{Vector of explained variables (N x 1)}
 \item{x}{Matrix of explanatory variables (N x K). Default is NULL}
-\item{xgroup}{Matrix of group IDs. The IDs may be group numbers or group names (N x K_{group}). Default is NULL}
+\item{xgroup}{Matrix of group IDs. The IDs may be group numbers or group names (N x K_g). Default is NULL}
 \item{weight}{Vector of weights for samples (N x 1). If non-NULL, the adjusted R-squared value is evaluated for weighted explained variables. Default is NULL}
 \item{offset}{Vector of offset variables (N x 1). Available if y is count (y_type = "count" is specified in the \code{\link{nongauss_y}} function). Default is NULL}
 \item{nvc}{If TRUE, non-spatiallly varying coefficients (NVCs; coefficients varying with respect to explanatory variable value) are asumed. If FALSE, constant coefficients are assumed. Default is FALSE}
@@ -28,15 +28,15 @@ This function estimates Gaussian and non-Gaussian spatial model for continuous a
 }
 \value{
 \item{b}{Matrix with columns for the estimated constant coefficients on x, their standard errors, t-values, and p-values (K x 4)}
-\item{b_g}{List of K_{group} matrices with columns for the estimated group effects, their standard errors, and t-values}
+\item{b_g}{List of K_g matrices with columns for the estimated group effects, their standard errors, and t-values}
 \item{c_vc}{Matrix of estimated NVCs on x (N x K). Effective if nvc = TRUE}
 \item{cse_vc}{Matrix of standard errors for the NVCs on x (N x K). Effective if nvc = TRUE}
 \item{ct_vc}{Matrix of t-values for the NVCs on x (N x K). Effective if nvc = TRUE}
 \item{cp_vc}{Matrix of p-values for the NVCs on x (N x K). Effective if nvc = TRUE}
-\item{s}{Vector of estimated variance parameters (2 x 1). The first and the second elements are the standard error and the Moran's I value of the estimated spatially dependent process, respectively. The Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (the maximum possible spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked}
-\item{s_c}{Vector of standard errors of the NVCs on xconst}
-\item{s_g}{Vector of estimated standard errors of the group effects}
-\item{e}{Error statistics. When y_type="continuous", it includes residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). rlogLik is replaced with log-likelihood (logLik) if method = "ml". resid_SE is replaced with the residual standard error for the transformed y (resid_SE_trans) if nongauss is specified. When y_type="count", the error statistics includes root mean squared error (RMSE), Gaussian likelihood approximating the model, AIC and BIC based on the likelihood, and the proportion of the null deviance explained by the model (deviance explained (\%)). deviance explained, which is also used in the mgcv package, corresponds to the adjusted R2 in case of the linear regression}
+\item{s}{Vector of estimated variance parameters (2 x 1). The first and the second elements are the standard deviation and the Moran's I value of the estimated spatially dependent process, respectively. The Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (the maximum possible spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked}
+\item{s_c}{Vector of standard deviations of the NVCs on xconst}
+\item{s_g}{Vector of estimated standard deviations of the group effects}
+\item{e}{Error statistics. When y_type="continuous", it includes residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). rlogLik is replaced with log-likelihood (logLik) if method = "ml". resid_SE is replaced with the residual standard error for the transformed y (resid_SE_trans) if nongauss is specified. When y_type="count", the error statistics contains root mean squared error (RMSE), Gaussian likelihood approximating the model, AIC and BIC based on the likelihood, and the proportion of the null deviance explained by the model (deviance explained (\%)). deviance explained, which is also used in the mgcv package, corresponds to the adjusted R2 in case of the linear regression}
 \item{vc}{List indicating whether NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed whreas 0 indicates removed}
 \item{r}{Vector of estimated random coefficients on Moran's eigenvectors (L x 1)}
 \item{sf}{Vector of estimated spatial dependent component (N x 1)}

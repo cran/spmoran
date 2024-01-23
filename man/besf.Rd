@@ -7,7 +7,7 @@ besf( y, x = NULL, nvc = FALSE, nvc_sel = TRUE, coords, s_id = NULL,
       maxiter = 30, bsize = 4000, ncores = NULL )
 }
 \description{
-Memory-free implementation of RE-ESF-based spatial regression for very large samples. This model estimates residual spatial dependence, constant coefficients, and non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value).
+Parallel and memory-free implementation of RE-ESF-based spatial regression for very large samples. This model estimates residual spatial dependence, constant coefficients, and non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value).
 }
 \arguments{
 \item{y}{Vector of explained variables (N x 1)}
@@ -31,7 +31,7 @@ Memory-free implementation of RE-ESF-based spatial regression for very large sam
 \item{cse_vc}{Matrix of standard errors for the NVCs on x (N x K). Effective if nvc =TRUE}
 \item{ct_vc}{Matrix of t-values for the NVCs on x (N x K). Effective if nvc =TRUE}
 \item{cp_vc}{Matrix of p-values for the NVCs on x (N x K). Effective if nvc =TRUE}
-\item{s}{Vector of estimated variance parameters (2 x 1). The first and the second elements denote the standard error and the Moran's I value of the estimated spatially dependent component, respectively. The Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (the maximum possible spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked}
+\item{s}{Vector of estimated variance parameters (2 x 1). The first and the second elements denote the standard deviation and the Moran's I value of the estimated spatially dependent component, respectively. The Moran's I value is scaled to take a value between 0 (no spatial dependence) and 1 (the maximum possible spatial dependence). Based on Griffith (2003), the scaled Moran'I value is interpretable as follows: 0.25-0.50:weak; 0.50-0.70:moderate; 0.70-0.90:strong; 0.90-1.00:marked}
 \item{e}{Vector whose elements are residual standard error (resid_SE), adjusted conditional R2 (adjR2(cond)), restricted log-likelihood (rlogLik), Akaike information criterion (AIC), and Bayesian information criterion (BIC). When method = "ml", restricted log-likelihood (rlogLik) is replaced with log-likelihood (logLik)}
 \item{vc}{List indicating whether NVC are removed or not during the BIC/AIC minimization. 1 indicates not removed whreas 0 indicates removed}
 \item{r}{Vector of estimated random coefficients on Moran's eigenvectors (L x 1)}

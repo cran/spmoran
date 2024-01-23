@@ -2,8 +2,10 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
                          offset0 = NULL, weight0 = NULL, compute_se = FALSE,
                          compute_quantile = FALSE ){
 
-  #if(class( mod ) !="resf_vc" ) stop("Error: The model is not an output from the resf_vc fucntion")
-  if( !inherits( mod, "resf_vc") ) stop("Error: The model is not an output from the resf_vc fucntion")
+  message( "IMPORTANT: This function will be retired in the next update." )
+  message( "           Use the predict0 function (argument is the same)." )
+
+  if( !inherits( mod, "resf_vc")&!inherits( mod, "resf_vc_internal") ) stop("Error: The model is not an output from the resf_vc fucntion")
 
   {
     af <-function(par,y) par[1]+par[2]*y
@@ -628,7 +630,7 @@ predict0_vc	<- function( mod, meig0, x0 = NULL, xgroup0 = NULL, xconst0 = NULL,
       pred0   <- pred0 + rowSums( b_g0 )
     }
 
-    y0         <- mod$other$y
+    y0         <- mod$other$y0
     tr_num     <- mod$other$tr_num
     y_nonneg   <- mod$other$y_nonneg
     y_type     <- mod$other$y_type

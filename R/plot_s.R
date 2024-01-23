@@ -5,7 +5,14 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
   pmax0        <- pmax
   xnum         <- xnum + 1
   #if( (class(mod) == "resf_vc")|(class(mod) == "besf_vc") ){
-  if( inherits(mod, "resf_vc")|inherits(mod, "besf_vc") ){
+
+  if( inherits(mod, "addlearn_local") ){
+    dd     <- data.frame(coords = mod$other$coords,b_vc = mod$b_vc, p_vc = mod$p_vc )
+    xname     <- names( mod$b_vc )
+    xname[ 1 ]<- "Spatially.dependent.intercept"
+    nx        <- length( xname )
+    names(dd) <- c("px","py",xname,paste(xname,"_p",sep=""))
+  } else if( inherits(mod, "resf_vc")|inherits(mod, "besf_vc") ){
 
     if( xtype == "xconst" ){
       xnum     <- xnum - 1

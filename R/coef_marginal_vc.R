@@ -1,6 +1,5 @@
 coef_marginal_vc  <- function( mod ){
 
-  #if(class( mod ) !="resf_vc" ) stop("Error: The model is not an output from the resf_vc fucntion")
   if( !inherits( mod, "resf_vc") ) stop("Error: The model is not an output from the resf_vc fucntion")
 
   n     <- length( mod$other$y )

@@ -3,6 +3,17 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
                     nvc = FALSE, nvc_sel = TRUE, nvc_num = 5, meig,
                     method = "reml", penalty = "bic", nongauss = NULL ){
 
+  if( !is.null( x ) ){
+    x	  <- as.matrix( x )
+    if( is.numeric( x ) == FALSE ){
+      mode( x ) <- "numeric"
+    }
+    x_id0<- apply( x, 2, sd ) != 0
+    x	    <- x[ , x_id0 ]
+    x     <- as.matrix(cbind( 1, x))
+  } else {
+    x_id0<- NULL
+  }
   res   <- resf_vc( y = y, xconst = x, xgroup = xgroup, weight = weight, offset = offset,
                     x = NULL, x_sel = FALSE, x_nvc = FALSE, x_nvc_sel = FALSE,
                     xconst_nvc = nvc, xconst_nvc_sel = nvc_sel,nvc_num = nvc_num,
@@ -21,7 +32,7 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
   s_c   <- res$s_c
   s_g   <- res$s_g
   e     <- res$e
-  r     <- res$other$r
+  r     <- as.matrix(res$other$r)
   sf    <- res$b_vc
   pred  <- res$pred
   pred_quantile<-res$pred_quantile
@@ -45,7 +56,8 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
   y_nonneg  <- res$other$y_nonneg
   y_type    <- res$other$y_type
   y_added   <- res$other$y_added
-  y0        <- res$other$y
+  y0        <- res$other$y0
+  y         <- res$other$y
   jackup    <- res$other$jackup
   offset    <- res$other$offset
   e_NULL    <- res$other$e_NULL
@@ -57,11 +69,11 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
   eevSqrt   <- res$other$eevSqrt
   sig_org   <- res$other$sig_org
 
-  other	  <- list( sf_alpha= sf_alpha, x_id = x_id, model = "resf", par0 = par0, nx = nx, df = df, bias=bias, res=res,
+  other	  <- list( sf_alpha= sf_alpha, x_id = x_id, x_id0=x_id0, model = "resf", par0 = par0, nx = nx, df = df, bias=bias, res=res,
                    x = res$other$xconst, coords = meig$other$coords, dif=res$other$dif,method=method,
                    tr_num = tr_num, y_nonneg = y_nonneg, y_added = y_added, y_type = y_type,eevSqrt = eevSqrt,
                    xg_levels = xg_levels, is_weight = is_weight, B_covs = B_covs, sig = sig, sig_org=sig_org,
-                   y = y0, jackup=jackup, offset=offset, e_NULL = e_NULL, w_scale = w_scale )
+                   y0 = y0, y = y, jackup=jackup, offset=offset, e_NULL = e_NULL, w_scale = w_scale)
 
   result  <-list( b = b, b_g = b_g, c_vc=c_vc, cse_vc=cse_vc, ct_vc = ct_vc, cp_vc = cp_vc,
                   s = s, s_c=s_c, s_g = s_g, e = e, vc = vc, r = r, sf = sf, pred = pred,
@@ -111,7 +123,9 @@ print.resf <- function(x, ...)
     print(x$s_g)
   }
 
-  if( !is.null(x$skew_kurt)|!is.null(x$tr_bpar) ){
+
+  #if( !is.null(x$skew_kurt)|!is.null(x$tr_bpar) ){
+  if( (x$skew_kurt$Estimates[1]!=0)|(x$skew_kurt$Estimates[1]!=0)|!is.null(x$tr_bpar) ){
     cat("\n----Estimated probability distribution of y--------------\n")
     if( !is.null(x$skew_kurt) ) print(x$skew_kurt)
     #if( !is.null(x$tr_bpar) ){

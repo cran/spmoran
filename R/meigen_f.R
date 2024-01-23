@@ -1,4 +1,4 @@
-meigen_f	<- function( coords, model = "exp", enum = 200, s_id = NULL ){
+meigen_f	<- function( coords, model = "exp", enum = 200, s_id = NULL, coords_knot=NULL ){
 
   n		<- nn<- dim( coords )[ 1 ]
   if( enum < 1 | enum != floor( enum ) ){
@@ -25,7 +25,13 @@ meigen_f	<- function( coords, model = "exp", enum = 200, s_id = NULL ){
     result$other$evk	<- NULL
 
   } else {
-    suppressWarnings(coordk	<- kmeans( coords, centers = enum + 1 )$centers)
+
+    if(!is.null(coords_knot)){
+      coordk	<- as.matrix( coords_knot )
+    } else {
+      suppressWarnings(coordk	<- kmeans( coords, centers = enum + 1 )$centers)
+    }
+
     D	<- rdist( coordk )
     h	<- max( spantree( D )$dist )#if( is.null(h) ) h	<- max( spantree( D )$dist )
     if( model == "exp" ){
@@ -67,7 +73,8 @@ meigen_f	<- function( coords, model = "exp", enum = 200, s_id = NULL ){
       #Cmean   <- Cmean[ s_id_dat2$s_id_num ]
       coords  <- coords0
     }
-    sfsf       <- rowSums( sf_ap *sf_ap )
+    sfsf        <- rowSums( sf_ap^2 )
+    sfsf[sfsf>1]<-1
 
     sf0	<- as.matrix( sf0   [ , ev_full > 1e-08 ] )
     ev0	<- ev0   [   ev_full > 1e-08 ] -1
