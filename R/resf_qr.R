@@ -1,4 +1,5 @@
-resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, ncores=NULL ){
+resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE,
+                     iter = 200, parallel=FALSE, ncores=NULL ){
 
   resf_00  	<- function( y, x = NULL, xgroup = NULL, meig, method = "reml" ){
 
@@ -299,7 +300,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, nco
     f0	  <- density( y )
     fq0	  <- approx( f0$x, f0$y, q_sel )$y
 
-    res<- foreach( i = 1:iter, .combine = "rbind" ) %dopar% {
+    res<- doop(foreach( i = 1:iter, .combine = "rbind" ),{
       usim	<- rnorm( n , sd = sd )
       rsim	<- rnorm( ne, sd = 1  )
       y_b	<- X %*% b + sf2 %*% rsim + usim
@@ -308,7 +309,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, nco
       RIF_b	<- fq0 / fq_b * ( y_b - q_sel) + q_sel
       sfres_sim	<- re_esfb( y = RIF_b, X = X, XSF0 = XSF0, M = M, meig = meig )
       c( sfres_sim$b, c( sfres_sim$par[ 1 ], sfres_sim$sf_moran) )
-    }
+    })
     B	<- as.matrix( res[ , 1:nx ] )
     S	<- as.matrix( res[ ,( nx + 1): (nx + 2) ] )
     return( list( B = B, S = S ) )
@@ -358,12 +359,21 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, nco
     }
     M	<- as.matrix( rbind( cbind( XX, t( EX ) ), cbind( EX, EE ) ) )
 
-    if(is.null(ncores)) {
-      ncores <- makeCluster(detectCores()-1,setup_strategy = "sequential")
+    if( parallel ){
+      if(is.null(ncores)) {
+        ncores00<- detectCores()
+        ncores0 <- ifelse(ncores00<=2,ncores00, ifelse(ncores00<=5, ncores00-1,ncores00-2))
+        ncores <- makeCluster(ncores0,setup_strategy = "sequential")
+      } else {
+        ncores0<- ncores
+        ncores <- makeCluster(ncores0,setup_strategy = "sequential")
+      }
+      registerDoParallel(ncores)
+      doop     <- `%dopar%`
+      message(paste0("Bootstrap sampling is parallelized with ", ncores0," cores"))
     } else {
-      ncores <- makeCluster(ncores,setup_strategy = "sequential")
+      doop     <- `%do%`
     }
-    registerDoParallel(ncores)
   }
 
   SFb  	<- NULL
@@ -437,7 +447,7 @@ resf_qr <- function( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, nco
     names( SFs_boot ) <- names( SFs_boot2 ) <- tau_name2
     res   <- list( b = SFb, r = SFr, s = SFs, e = SFe, B0 = SFb_boot,
                    S0 = SFs_boot, B = SFb_boot2, S = SFs_boot2, tau = tau, call = match.call() )
-    stopCluster( ncores )
+    if(parallel) stopCluster( ncores )
   }
 
   class(res)<-"resf_qr"

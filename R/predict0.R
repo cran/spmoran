@@ -219,18 +219,75 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
     }
   }
 
+  if( !is.null( mod$other$interact_sel_all ) ){
+
+    nx            <- 1
+    if( inherits( mod, "resf_vc")|inherits( mod, "resf_vc_internal" ) ){
+      nx          <- ncol(mod$b_vc)
+    }
+
+    evz_num       <- x_sel         <- NULL
+    if( !is.null(meig0$ev_z[[1]]) ){
+      evz_num     <- c(evz_num, rep(1,nx))
+      x_sel       <- c(x_sel, (1:nx) )
+    }
+    if( length(meig0$ev_z) == 2  ){
+      evz_num     <- c(evz_num, rep(2,nx))
+      x_sel       <- c(x_sel, (1:nx) )
+    }
+
+    ev_z_list<-sf_z_list  <- evSqrts_list<-list(NULL)
+    ev_z_list[1:2]<-sf_z_list[1:2]  <- evSqrts_list[1:2] <-NA
+    if( 1 %in% evz_num[mod$other$interact_sel_all] ){#!is.null( mod$other$interact_sel_all ) &
+      ev_sel       <- mod$other$int_ev_sel_list[[1]] # ev_z_all >= ev_min_val
+      ev_z_id      <- rep(1:length(meig0$ev_z[[ 1 ]]), each=length(meig0$ev))[ev_sel]
+      ev_id        <- rep(1:length(meig0$ev), length(meig0$ev_z[[ 1 ]]))[ev_sel]
+      ev_z_all      <- meig0$ev_z[[ 1 ]] %x% meig0$ev
+
+      ev_z_list[[1]]<- ev_z_all[ev_sel]
+      sf_z_list[[1]]<- meig0$sf[ , ev_id ]*meig0$sf_z[[ 1 ]][ , ev_z_id ]
+      evSqrts_list[[1]]<-mod$other$evSqrts_t_int
+    }
+
+    if( 2 %in% evz_num[mod$other$interact_sel_all] ){#!is.null(mod$other$ev_sel_list[[2]]) &
+      ev_sel       <- mod$other$int_ev_sel_list[[2]]#ev_z_all >= ev_min_val
+      ev_z_id      <- rep(1:length(meig0$ev_z[[ 2 ]]), each=length(meig0$ev))[ev_sel]
+      ev_id        <- rep(1:length(meig0$ev), length(meig0$ev_z[[ 2 ]]))[ev_sel]
+      ev_z_all     <- meig0$ev_z[[ 2 ]] %x% meig0$ev
+
+      ev_z_list[[2]]<- ev_z_all[ev_sel]
+      sf_z_list[[2]]<- meig0$sf[ , ev_id ]*meig0$sf_z[[ 2 ]][ , ev_z_id ]
+      evSqrts_list[[2]]<-mod$other$evSqrts_tc_int
+    }
+  }
+
   if( inherits( mod, "esf") ){
     n        <-length(mod$other$coords[,1])
     nx       <-mod$other$nx
-    eevSqrt  <-mod$other$eevSqrt
+
+    sf      	<- meig0$sf
+    ev      	<- meig0$ev
+    sf_id     <- rep("s",length(ev))
+    if(!is.null(meig0$ev_z)){
+      sf      <-cbind(sf, meig0$sf_z[[1]])
+      ev      <-c(ev, meig0$ev_z[[1]])
+      sf_id   <-c(sf_id, rep("z1", length(meig0$ev_z[[1]])))
+
+      if(length(meig0$ev_z)==2){
+        sf    <-cbind(sf, meig0$sf_z[[2]])
+        ev    <-c(ev, meig0$ev_z[[2]])
+        sf_id <-c(sf_id, rep("z2", length(meig0$ev_z[[2]])))
+      }
+    }
+    sf        <- as.matrix( sf )
 
     if( is.null( dim( mod$r ) ) ){
-      sf_pred	<- rep(0, dim( meig0$sf )[1] )#dim(x0)[1]
+      sf_pred	<- rep(0, dim( sf )[1] )#dim(x0)[1]
     } else {
       if( length(mod$r[,1]) == 1){
-        sf_pred	<- meig0$sf[ ,mod$other$sf_id ] * c( mod$r[,1] )
+        sf_pred	<- sf[ ,mod$other$sf_id ] * c( mod$r[,1] )
       }else{
-        sf_pred	<- meig0$sf[ ,mod$other$sf_id ] %*% c( mod$r[,1] )
+        sf_pred	<- sf[ ,mod$other$sf_id ] %*% c( mod$r[,1] )
       }
     }
 
@@ -268,19 +325,62 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
   if( inherits(mod, "resf") ){
     n        <-length(mod$other$coords[,1])
     nx       <-mod$other$nx
-    ne       <-length(mod$r[,1])
-    eevSqrt  <-mod$other$eevSqrt
-    meig0$sf <-meig0$sf[,1:ne]
+    meig0$sf<-meig0$sf[,1:mod$other$nev0]
+    meig0$ev<-meig0$ev[ 1:mod$other$nev0]
 
-    if( is.null( dim( mod$r ) ) ){
+    sf_coef    <- mod$other$b_s[[ 1 ]]
+    if( length(sf_coef)==1 ){
       sf_pred	<- rep(0, dim( meig0$sf )[1] )#dim(x0)[1]
+    #  if( length(mod$r[,1]) == 1){
+    #    sf_pred	<- meig0$sf * c( mod$r[,1] )
+    #  }else{
+    #    sf_pred	<- meig0$sf %*% c( mod$r[, 1 ] )
+    #  }
+    #}
     } else {
-      if( length(mod$r[,1]) == 1){
-        sf_pred	<- meig0$sf * c( mod$r[,1] )
-      }else{
-        sf_pred	<- meig0$sf %*% c( mod$r[, 1 ] )
+      i        <-1
+      evSqrts  <-mod$other$evSqrts[[ i ]]
+      evSqrts_n<- NA
+      basis2     <- NULL
+      evSqrts2   <- NULL
+      if( !is.na( evSqrts[1] ) ){
+        sel        <- mod$other$omit_list[[i]]
+        basis2     <- cbind( basis2, meig0$sf[,sel] )
+        evSqrts2   <- c( evSqrts2, evSqrts )#[sel]
       }
+      #if( !is.na( evSqrts_n[1] ) ){
+      #  sel        <- mod$other$omit_list[[ mod$other$id_nsv[i] ]]
+      #  basis2     <- cbind( basis2, B_n[[i]][,sel] )
+      #  evSqrts2   <- c( evSqrts2, evSqrts_n )#[sel]
+      #}
+      if( !is.na( mod$other$evSqrts_t[[i]][1] ) ){
+        sel        <- mod$other$omit_list[[ mod$other$id_ntv[i] ]]
+        basis2     <- cbind( basis2, meig0$sf_z[[1]][,sel] )
+        evSqrts2   <- c( evSqrts2, mod$other$evSqrts_t[[i]] )#[sel]
+      }
+      if( !is.na( mod$other$evSqrts_tc[[i]][1] ) ){
+        sel        <- mod$other$omit_list[[ mod$other$id_ntcv[i] ]]
+        basis2     <- cbind( basis2, meig0$sf_z[[2]][,sel] )
+        evSqrts2   <- c( evSqrts2, mod$other$evSqrts_tc[[i]] )#[sel]
+      }
+
+      if( !is.na(mod$other$evSqrts_t_int[[i]][1] ) ){
+        sel        <- mod$other$omit_list[[ mod$other$id_ntv_interact[i] ]]
+        basis2     <- cbind( basis2, sf_z_list[[1]][,sel])
+        evSqrts2   <- c( evSqrts2, ev_z_list[[1]][sel])#mod$other$evSqrts_t_int[[1]]
+      }
+
+      if( !is.na(mod$other$evSqrts_tc_int[[i]][1] ) ){
+        sel        <- mod$other$omit_list[[ mod$other$id_ntcv_interact[i] ]]
+        basis2     <- cbind( basis2, sf_z_list[[2]][,sel])
+        evSqrts2   <- c( evSqrts2, ev_z_list[[2]][sel])#mod$other$evSqrts_t_int[[1]]
+      }
+      sf2		     <- t( t( basis2 ) * evSqrts2 )
+      sf_pred    <- basis2 %*% sf_coef[-1]# sf_coef[ 1 ] +
     }
+    #ne       <-length(mod$r[,1])
+    #meig0$sf <-meig0$sf[,1:ne]
+
     n0        <- length( c(sf_pred) )
 
     if( !is.null( x0 )){
@@ -289,21 +389,18 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
         mode( xx0 ) <- "numeric"
       }
       xx0     <- xx0[,mod$other$x_id0]#xf_id0
-      X0      <- as.matrix(cbind( 1, xx0)[,mod$other$x_id] )#[,mod$other$res$other$xf_id]
-      #X0  <- as.matrix(cbind( 1, xx0 ))#[,mod$other$res$other$xf_id]
-
-      X1 <- as.matrix( mod$other$res$other$xconst )[,mod$other$x_id]#xf_id#mod$other$res$other$x_id
-      #X0 <- as.matrix( as.matrix( x0 )[,mod$other$res$other$xf_id] )
+      X0      <- as.matrix(cbind( 1, xx0)[,mod$other$x_id] )
+      X1      <- as.matrix( mod$other$res$other$xconst )[,mod$other$x_id]
     } else {
-      X0<-NULL
+      X0      <- NULL
     }
 
-    XX_0	  <- list( NULL )
-    XX	    <- NULL
-    nvc <- mod$other$res$other$nvc_xconst
+    XX_0	    <- list( NULL )
+    XX	      <- NULL
+    nvc       <- mod$other$res$other$nvc_xconst
     if( ( is.logical( nvc[ 1 ] ) ==FALSE )&( !is.null( x0 ) ) ){
 
-      X1_nvc<- as.matrix( X1 )[ , nvc ]
+      X1_nvc  <- as.matrix( X1 )[ , nvc ]
       if( n0 == 1 ){
         X0_nvc<- X0[ nvc ]
       } else {
@@ -498,46 +595,48 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
 
     pred_name  <-names(pred)
     noconst_last<-TRUE
-    if( tr_num > 0 ){######## transfer this part to prediction functions
-      z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,jackup=jackup)
-      z_ms     <- z0$z_ms
-      y_ms     <- z0$y_ms
-      pred2    <- i_sal_k(par=tr_par,y=pred0,k=tr_num,noconst_last=noconst_last,
-                          bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
-      if( y_nonneg ) pred2[ pred2 < 0 ] <- 0
-      if( y_type=="count" ){
-        pred2 <- exp( pred2 )
+    if( !is.na(pred0[1]) ){
+      if( tr_num > 0 ){######## transfer this part to prediction functions
+        z0       <- sal_k(par=tr_par,y=y0,k=tr_num,noconst_last=noconst_last,bc_par=tr_bpar,jackup=jackup)
+        z_ms     <- z0$z_ms
+        y_ms     <- z0$y_ms
+        pred2    <- i_sal_k(par=tr_par,y=pred0,k=tr_num,noconst_last=noconst_last,
+                            bc_par=tr_bpar,y_ms=y_ms,z_ms=z_ms,jackup=jackup) - y_added
+        if( y_nonneg ) pred2[ pred2 < 0 ] <- 0
+        if( y_type=="count" ){
+          pred2 <- exp( pred2 )
+          if( !is.null( mod$other$offset ) ){
+            if( is.null( offset0 ) ) stop( "offset0 is missing" )
+            pred2 <- pred2 * offset0
+          }
+        }
+        pred	    <- data.frame( pred= pred2, pred_transG=pred0, pred[,-1] )
+        names(pred)[-c(1:2)]<-pred_name[ -1 ]
+
+      } else if( y_nonneg ){
+        z0        <- bc(par=tr_bpar,y=y0,jackup=jackup)
+        z_ms      <- c(mean(z0),sd(z0))
+        pred00    <- pred0*z_ms[2] + z_ms[1]
+        pred2     <- i_bc(par=tr_bpar,y=pred00,jackup=jackup) - y_added
+        pred2[ is.nan( pred2 ) ] <- 0
+        pred2[pred2 < 0 ]        <- 0
+        pred_test      <- data.frame(pred=pred2, pred_transG=pred00,pred[,-1])
+        pred_test$xb   <- pred_test$xb*z_ms[2]+z_ms[1]
+        if(ncol(pred_test)>=3){
+          pred_test[,3:ncol(pred_test)] <- pred_test[,3:ncol(pred_test)]*z_ms[2]
+        }
+        names(pred_test)[-c(1:2)]<-pred_name[ -1 ]
+        pred      <- pred_test
+
+      } else if( y_type=="count" ){
+        pred2     <- exp( pred0 )
         if( !is.null( mod$other$offset ) ){
           if( is.null( offset0 ) ) stop( "offset0 is missing" )
-          pred2 <- pred2 * offset0
+          pred2  <- pred2 * offset0
         }
+        pred	    <- data.frame( pred = pred2, pred_transG=pred0, pred[,-1] )
+        names(pred)[-c(1:2)] <- pred_name[ -1 ]
       }
-      pred	    <- data.frame( pred= pred2, pred_transG=pred0, pred[,-1] )
-      names(pred)[-c(1:2)]<-pred_name[ -1 ]
-
-    } else if( y_nonneg ){
-      z0        <- bc(par=tr_bpar,y=y0,jackup=jackup)
-      z_ms      <- c(mean(z0),sd(z0))
-      pred00    <- pred0*z_ms[2] + z_ms[1]
-      pred2     <- i_bc(par=tr_bpar,y=pred00,jackup=jackup) - y_added
-      pred2[ is.nan( pred2 ) ] <- 0
-      pred2[pred2 < 0 ]        <- 0
-      pred_test      <- data.frame(pred=pred2, pred_transG=pred00,pred[,-1])
-      pred_test$xb   <- pred_test$xb*z_ms[2]+z_ms[1]
-      if(ncol(pred_test)>=3){
-        pred_test[,3:ncol(pred_test)] <- pred_test[,3:ncol(pred_test)]*z_ms[2]
-      }
-      names(pred_test)[-c(1:2)]<-pred_name[ -1 ]
-      pred      <- pred_test
-
-    } else if( y_type=="count" ){
-      pred2     <- exp( pred0 )
-      if( !is.null( mod$other$offset ) ){
-        if( is.null( offset0 ) ) stop( "offset0 is missing" )
-        pred2  <- pred2 * offset0
-      }
-      pred	    <- data.frame( pred = pred2, pred_transG=pred0, pred[,-1] )
-      names(pred)[-c(1:2)] <- pred_name[ -1 ]
     }
 
     ################## pred_se
@@ -549,7 +648,6 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
     }
 
     if( mod$other$y_type != "count" & compute_se ){
-      #  if( mod$other$y_type != "count" & compute_se & !is.null(res) ){
       if( mod$other$is_weight ==TRUE ){
         if( is.null( weight0 ) ) stop( "Error: weight0 is needed to compute SE/quantile" )
       } else {
@@ -560,9 +658,11 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
         stop( "Error: x0 is needed to compute SE" )
       }
 
-      B_covs<-mod$other$B_covs
-      sig   <-mod$other$sig
-      XX	   <- as.matrix( cbind( 1, X0, meig0$sf ) )
+      evSqrts    <-mod$other$evSqrts[[ 1 ]]
+      if(length( evSqrts ) == 1) evSqrts <- NULL
+
+      sel        <- mod$other$omit_list[[ 1 ]]
+      XX	   <- as.matrix( cbind( 1, X0, meig0$sf[,sel] ) )
 
       #########Group
       if( !is.null( mod$b_g ) ){
@@ -576,20 +676,44 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
       }
 
       #########NVC
-      if( !is.null( mod$other$res$other$evSqrts_c[[1]] ) ){
+      if( !is.na( mod$other$res$other$evSqrts_c[[1]][1] ) ){
         for( i in 1:nnxf ){
-          #if(i ==1){
-          # evSqrts_n<- NULL
-          #} else {
           evSqrts_n<- mod$other$res$other$evSqrts_c[[ i ]]
-          if( length( evSqrts_n ) == 1 ) evSqrts_n <- NULL
-          #}
+          if( length( evSqrts_n ) == 1 ) evSqrts_n <- NULL ############# check !!!!!!
 
           if( !is.null( evSqrts_n ) ){
             XX<- cbind( XX, X0[ , i ] * B_c[[ i ]] )
           }
         }
       }
+
+      ######### T
+      if( !is.na( mod$other$evSqrts_t[[1]][1] ) ){
+        sel         <- mod$other$omit_list[[ mod$other$id_ntv[1] ]]
+        XX<- cbind( XX, meig0$sf_z[[1]][,sel] )
+        #evSqrts2   <- c( evSqrts2, mod$other$evSqrts_t[[i]] )#[sel]
+      }
+      ######### Tc
+      if( !is.na( mod$other$evSqrts_tc[[1]][1] ) ){
+        sel        <- mod$other$omit_list[[ mod$other$id_ntcv[1] ]]
+        XX<- cbind( XX, meig0$sf_z[[2]][,sel] )
+        #evSqrts2   <- c( evSqrts2, mod$other$evSqrts_tc[[i]] )#[sel]
+      }
+
+      ######### T_int
+      if( !is.na(mod$other$evSqrts_t_int[[1]][1] ) ){
+        sel        <- mod$other$omit_list[[ mod$other$id_ntv_interact[1] ]]
+        XX<- cbind( XX, sf_z_list[[1]][,sel] )
+        #evSqrts2   <- c( evSqrts2, ev_z_list[[1]] )#[,sel]#mod$other$evSqrts_t_int[[1]]
+      }
+
+      ######### Tc_int
+      if( !is.na(mod$other$evSqrts_tc_int[[1]][1] ) ){
+        sel        <- mod$other$omit_list[[ mod$other$id_ntcv_interact[1] ]]
+        XX<- cbind( XX, sf_z_list[[2]][,sel] )
+        #evSqrts2   <- c( evSqrts2, ev_z_list[[2]] )#[,sel]#mod$other$evSqrts_t_int[[1]]
+      }
+
 
       if( is.null( weight0 ) ){
         weight0  <- 1
@@ -598,8 +722,8 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
       }
 
       X3      <- XX
-      X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* eevSqrt[eevSqrt > 0])
-      pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( B_covs %*% t( sqrt(weight0)*X3 ) ) ) + sig )
+      X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* mod$other$eevSqrt[mod$other$eevSqrt > 0])
+      pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( mod$other$B_covs %*% t( sqrt(weight0)*X3 ) ) ) + mod$other$sig )
       pred0_se<- pred0_se/sqrt( weight0 )
       if( sum(names( pred ) %in% "pred_transG") == 0 ){
         pred_name<-names( pred )
@@ -682,17 +806,18 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
     b_vc <- bse_vc <- bt_vc <- bp_vc <- NULL
   }
 
-  if( inherits( mod, "resf_vc")|inherits( mod, "resf_vc_internal") ){
+  if( inherits( mod, "resf_vc")|inherits( mod, "resf_vc_internal" ) ){
     n        <- length(mod$other$coords[,1])
     nx       <- mod$other$nx
-    eevSqrt  <- mod$other$eevSqrt
+    meig0$sf<-meig0$sf[,1:mod$other$nev0]
+    meig0$ev<-meig0$ev[ 1:mod$other$nev0]
+
     if( ( length(mod$other$evSqrts_n)==1 )&( is.null(mod$other$evSqrt_n[[1]]))&(length(mod$other$evSqrts) > 1 )){
       mod$other$evSqrts_n <-list(NULL)
       for(pp in 2:length(mod$other$evSqrts)){
         mod$other$evSqrts_n<-c(mod$other$evSqrts_n, list(NULL))
       }
     }
-
 
     if( !is.null( mod$other$x ) ){
       mod$other$x <- as.matrix(mod$other$x)
@@ -707,7 +832,12 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
 
     n0        <- dim(meig0$sf)[1]
     if( !is.null( x0 ) ){
-      x0	<- as.matrix( x0 )
+      if( n0 == 1 ){
+         x0	<- t(as.matrix( c(x0) ))
+      } else {
+         x0	<- as.matrix( x0 )
+      }
+
       if( is.numeric( x0 ) == FALSE ){
         mode( x0 ) <- "numeric"
       }
@@ -716,7 +846,7 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
         stop("x and x0 must have the same number of columns")
       }
       if( n0 == 1 ){
-        X0      <- x0[ x_id]
+        X0      <- t(as.matrix(x0[ x_id]))
       } else {
         X0      <- as.matrix( x0[,x_id] )
       }
@@ -730,12 +860,18 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
 
 
     if( !is.null( xconst0 ) ){
+      if( n0 == 1 ){
+        xconst0<- t(as.matrix( c(xconst0) ))
+      } else {
+        xconst0<- as.matrix( xconst0 )
+      }
+
       if( dim( as.matrix( xconst0 ) )[2] != length( mod$other$xf_id ) ){
         stop("xconst and xconst0 must have the same number of columns")
       }
 
       if( n0 == 1 ){
-        X0const <- as.matrix( xconst0 )[ mod$other$xf_id]
+        X0const <- t( as.matrix( as.matrix( xconst0 )[ mod$other$xf_id] ))
       } else {
         X0const <- as.matrix( as.matrix( xconst0 )[,mod$other$xf_id] )
       }
@@ -892,10 +1028,10 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
 
     n	  <- length( mod$other$y )
     n0	<- length( meig0$sf[ , 1 ] )
-    ne	<- length( mod$other$b_s[[ 1 ]][ -1 ] )
+    #ne	<- length( mod$other$b_s[[ 1 ]][ -1 ] )
     nsv	<- sum( x_id ) + 1#mod$other$x_id
     nxf	<- sum( mod$other$xf_id )
-    meig0$sf<- as.matrix( meig0$sf[ , 1:ne ])
+    meig0$sf<- as.matrix( meig0$sf)#[ , 1:ne ]
 
     #for( i in 1:length(mod$other$evSqrts_n)){
     #  if(length( mod$other$evSqrts_n[[i]] ) == 1) mod$other$evSqrts_n[[i]] <- NULL
@@ -910,60 +1046,108 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
     bp_vc	<- matrix(0, nrow = n0, ncol = nsv )
     for( i in 1:nsv ){
       evSqrts    <-mod$other$evSqrts[[ i ]]
-      if(length( evSqrts ) == 1) evSqrts <- NULL
-
-      if(i ==1){
-        evSqrts_n<- NULL
+      if( i == 1 ){
+        evSqrts_n<- NA
       } else {
         evSqrts_n<- mod$other$evSqrts_n[[ i ]]
-        if(length( evSqrts_n ) == 1) evSqrts_n <- NULL
       }
 
-      evSqrt_i        <-c(evSqrts, evSqrts_n)
-      if( length( evSqrt_i ) <= 1 ){
-        b_vc[ , i ]	  <- mod$other$b_s[[ i ]][ 1 ]
-        if( i ==1 ) b_vc[ , i ]<-b_vc[ , i ] + mod$other$Bias      #### added
-
-        bse_vc[ , i ]	<- sqrt( mod$other$b_covs[[ i ]] )
-        bt_vc[ , i ]	<- b_vc[ , i ] / bse_vc[ , i ]
-        bp_vc[ , i ]	<- 2 - 2 * pt( abs( bt_vc[ , i ] ), df = n - mod$other$df )
-      } else {
-        if( n0 == 1 ){
-          if( is.null( evSqrts_n ) & !is.null( evSqrts ) ){
-            b_vc[ , i ]<- mod$other$b_s[[ i ]][ 1 ] + c(meig0$sf) %*% c( mod$other$b_s[[ i ]][ -1 ] )
-            sf2		     <- t( meig0$sf * evSqrts )
-          } else if( !is.null( evSqrts_n ) & is.null( evSqrts ) ){
-            b_vc[ , i ]<- mod$other$b_s[[ i ]][ 1 ] + c(B_n[[i]]) %*% c( mod$other$b_s[[ i ]][ -1 ] )
-            sf2		     <- t( B_n[[i]] * evSqrts_n )
-          } else if( !is.null( evSqrts_n ) & !is.null( evSqrts ) ){
-            basis2     <- c( meig0$sf, B_n[[i]] )
-            evSvqr2    <- c( evSqrts, evSqrts_n )
-            sf2		     <- t( basis2 * evSvqr2 )
-            b_vc[ , i ]<- mod$other$b_s[[ i ]][ 1 ] + basis2 %*% c(  mod$other$b_s[[ i ]][ -1 ] )
+      if( n0 == 1 ){
+        b_vc_coef  <- mod$other$b_s[[ i ]]
+        b_vc[ , i ]<- b_vc_coef[ 1 ]# + basis2 %*% b_vc_coef[-1]
+        basis2     <- evSqrts2   <- NULL
+        if( length(b_vc_coef)>1 ){
+          if( !is.na( evSqrts[1] ) ){
+            sel        <- mod$other$omit_list[[i]]
+            basis2     <- c( basis2, meig0$sf[,sel] )
+            evSqrts2   <- c( evSqrts2, evSqrts )#[sel]
+          }
+          if( !is.na( evSqrts_n[1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_nsv[i] ]]
+            basis2     <- c( basis2, B_n[[i]][,sel] )
+            evSqrts2   <- c( evSqrts2, evSqrts_n )#[sel]
+          }
+          if( !is.na( mod$other$evSqrts_t[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntv[i] ]]
+            basis2     <- c( basis2, meig0$sf_z[[1]][,sel] )
+            evSqrts2   <- c( evSqrts2, mod$other$evSqrts_t[[i]] )#[sel]
+          }
+          if( !is.na( mod$other$evSqrts_tc[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntcv[i] ]]
+            basis2     <- c( basis2, meig0$sf_z[[2]][,sel] )
+            evSqrts2   <- c( evSqrts2, mod$other$evSqrts_tc[[i]] )#[sel]
           }
 
+          if( !is.na(mod$other$evSqrts_t_int[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntv_interact[i] ]]
+            basis2     <- c( basis2, sf_z_list[[1]][,sel] )
+            evSqrts2   <- c( evSqrts2, ev_z_list[[1]][sel] )#[,sel]#mod$other$evSqrts_t_int[[1]]
+          }
+
+          if( !is.na(mod$other$evSqrts_tc_int[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntcv_interact[i] ]]
+            basis2     <- c( basis2, sf_z_list[[2]][,sel])
+            evSqrts2   <- c( evSqrts2, ev_z_list[[2]][sel])#mod$other$evSqrts_t_int[[1]]
+          }
+          b_vc[ , i ]<- b_vc[ , i ] + sum( basis2 * b_vc_coef[-1])
+
+          x_sf		        <- t( as.matrix( c( 1, basis2 * evSqrts2 ) ))#as.matrix( cbind( 1, sf2 ) )
+          bse_vc[ , i ]	  <- sqrt( colSums( t( x_sf ) * ( mod$other$b_covs[[ i ]] %*% t( x_sf ) ) ) )
         } else {
-          if( is.null( evSqrts_n ) & !is.null( evSqrts ) ){
-            b_vc[ , i ]<- mod$other$b_s[[ i ]][ 1 ] + meig0$sf %*% c( mod$other$b_s[[ i ]][ -1 ] )
-            sf2		     <- t( t( meig0$sf ) * evSqrts )
-          } else if( !is.null( evSqrts_n ) & is.null( evSqrts ) ){
-            b_vc[ , i ]<- mod$other$b_s[[ i ]][ 1 ] + B_n[[i]] %*% c( mod$other$b_s[[ i ]][ -1 ] )
-            sf2		     <- t( t( B_n[[i]] ) * evSqrts_n )
-          } else if( !is.null( evSqrts_n ) & !is.null( evSqrts ) ){
-            basis2     <- cbind( meig0$sf, B_n[[i]] )
-            evSqrts2    <- c( evSqrts, evSqrts_n )
-            b_vc[ , i ]<- mod$other$b_s[[ i ]][ 1 ] + basis2 %*% c( mod$other$b_s[[ i ]][ -1 ] )
-            sf2		     <- t( t( basis2 ) * evSqrts2 )
-          }
+          bse_vc[ , i ]	  <- sqrt( mod$other$b_covs[[ i ]] )
         }
 
-        if( i ==1 ) b_vc[ , i ] <- b_vc[ , i ] + mod$other$Bias      #### added
+      } else {
 
-        x_sf		        <- as.matrix( cbind( 1, sf2 ) )
-        bse_vc[ , i ]	  <- sqrt( colSums( t( x_sf ) * ( mod$other$b_covs[[ i ]] %*% t( x_sf ) ) ) )
-        bt_vc[ , i ]	  <- b_vc[ , i ] / bse_vc[ , i ]
-        bp_vc[ , i ]	  <- 2 - 2 * pt( abs( bt_vc[ , i ] ), df = n - mod$other$df )
+        b_vc_coef  <- mod$other$b_s[[ i ]]
+        b_vc[ , i ]<- b_vc_coef[ 1 ]# + basis2 %*% b_vc_coef[-1]
+        basis2     <- evSqrts2   <- NULL
+        if( length(b_vc_coef)>1){
+          if( !is.na( evSqrts[1] ) ){
+            sel        <- mod$other$omit_list[[i]]
+            basis2     <- cbind( basis2, meig0$sf[,sel] )
+            evSqrts2   <- c( evSqrts2, evSqrts )#[sel]
+          }
+          if( !is.na( evSqrts_n[1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_nsv[i] ]]
+            basis2     <- cbind( basis2, B_n[[i]][,sel] )
+            evSqrts2   <- c( evSqrts2, evSqrts_n )#[sel]
+          }
+          if( !is.na( mod$other$evSqrts_t[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntv[i] ]]
+            basis2     <- cbind( basis2, meig0$sf_z[[1]][,sel] )
+            evSqrts2   <- c( evSqrts2, mod$other$evSqrts_t[[i]] )#[sel]
+          }
+          if( !is.na( mod$other$evSqrts_tc[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntcv[i] ]]
+            basis2     <- cbind( basis2, meig0$sf_z[[2]][,sel] )
+            evSqrts2   <- c( evSqrts2, mod$other$evSqrts_tc[[i]] )#[sel]
+          }
+
+          if( !is.na(mod$other$evSqrts_t_int[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntv_interact[i] ]]
+            basis2     <- cbind( basis2, sf_z_list[[1]][,sel] )
+            evSqrts2   <- c( evSqrts2, ev_z_list[[1]][sel] )#[,sel]#mod$other$evSqrts_t_int[[1]]
+          }
+
+          if( !is.na(mod$other$evSqrts_tc_int[[i]][1] ) ){
+            sel        <- mod$other$omit_list[[ mod$other$id_ntcv_interact[i] ]]
+            basis2     <- cbind( basis2, sf_z_list[[2]][,sel])
+            evSqrts2   <- c( evSqrts2, ev_z_list[[2]][sel])#mod$other$evSqrts_t_int[[1]]
+          }
+          b_vc[ , i ]<- b_vc[ , i ] + basis2 %*% b_vc_coef[-1]
+
+          x_sf		        <- as.matrix( cbind( 1, t( t( basis2 ) * evSqrts2 ) ) )
+          bse_vc[ , i ]	  <- sqrt( colSums( t( x_sf ) * ( mod$other$b_covs[[ i ]] %*% t( x_sf ) ) ) )
+        } else {
+          bse_vc[ , i ]	  <- sqrt( mod$other$b_covs[[ i ]] )
+        }
       }
+
+      if( i ==1 ) b_vc[ , i ] <- b_vc[ , i ] + mod$other$Bias      #### added
+
+      bt_vc[ , i ]	  <- b_vc[ , i ] / bse_vc[ , i ]
+      bp_vc[ , i ]	  <- 2 - 2 * pt( abs( bt_vc[ , i ] ), df = n - mod$other$df )
     }
 
     if( is.null( mod$c_vc ) ){
@@ -1032,32 +1216,41 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
     }
     b_g    <- b_g0
 
-
-    xb_vc	<- 0
-    if( is.null( x0 ) == FALSE ){
+    xb_vc     <- 0
+    if( !is.null( x0 )&(sum(mod$other$x_id)>0) ){
       x_id    <- apply(mod$other$x,2,sd)!=0
 
       if( length( mod$other$x_id ) == 1 ){
-        x0	<- as.matrix( cbind( 1, x0[  x_id ] ))
+        x0	  <- as.matrix( cbind( 1, x0[  x_id ] ))
       } else {
-        x0	<- as.matrix( cbind( 1, x0[, x_id ] ))
+        if(n0==1){
+          x0	<- t( as.matrix( c( 1, x0[, x_id ] )))
+        } else {
+          x0	<- as.matrix( cbind( 1, x0[, x_id ] ))
+        }
       }
       if( is.numeric( x0 ) == FALSE ){
         mode( x0 )	<- "numeric"
       }
+
+      if( n0 == 1 ){
+        xb_vc   <- sum(x0[-1]*b_vc[-1])
+      } else {
+        xb_vc   <- rowSums(as.matrix(x0[,-1]*b_vc[,-1]))
+      }
     }
 
-    if( is.null( mod$other$xf_id ) ){
-      xb_const	<- 0
-      if( !is.null( xconst0 ) ) message( "Note: xconst0 is ignored" )
-    } else {
-      if( is.null( xconst0 ) ){
-        xb_const	<- 0
-      } else {
+    xb_const  <- 0
+    if( !is.null( mod$other$xf_id ) ){
+      if( !is.null( xconst0 ) ){
         if( length( mod$other$xf_id ) == 1 ){
           xconst0	<- as.matrix( xconst0[  mod$other$xf_id ] )
         } else {
-          xconst0	<- as.matrix( xconst0[, mod$other$xf_id ] )
+          if(n0==1){
+            xconst0	<- t( as.matrix( c( xconst0[, mod$other$xf_id ] )))
+          } else {
+            xconst0	<- as.matrix( xconst0[, mod$other$xf_id ] )
+          }
         }
         if( is.numeric( xconst0 ) == FALSE ){
           mode( xconst0 )	<- "numeric"
@@ -1065,17 +1258,7 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
       }
     }
 
-    if( n0 == 1 ){
-      xb_vc   <- sum(x0[-1]*b_vc[-1])
-      sf_pred <- b_vc[ 1]
-    } else {
-      xb_vc   <- rowSums(as.matrix(x0[,-1]*b_vc[,-1]))
-      sf_pred <- b_vc[,1]
-    }
-
-    if( is.null( xconst0 ) ){
-      xb_const  <- 0
-    } else {
+    if( !is.null( xconst0 ) ){
       if( !is.null( mod$c_vc ) ){
         if( n0 == 1 ){
           xb_const  <- sum( xconst0 * c_vc )
@@ -1095,9 +1278,16 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
       }
     }
 
+    if( n0 == 1 ){
+      sf_pred <- b_vc[ 1]
+    } else {
+      sf_pred <- b_vc[,1]
+    }
+
+    x_problem      <- (length(mod$other$x_id)>0 ) & is.null( x0 )
     xconst_problem <- ( length(mod$other$xf_id) > 0 ) & is.null( xconst0 )
     #xconst_problem <- !is.null( mod$other$xf_id ) & is.null( xconst0 )
-    if( ( !is.null( x0 ) ) & ( xconst_problem == FALSE ) ){
+    if( ( x_problem == FALSE ) & ( xconst_problem == FALSE ) ){
       sf_pred	<- sf_pred - mean( mod$b_vc[,1] )
       xb	    <- xb_vc + xb_const + mean( mod$b_vc[,1] )
       pred0	<- xb + sf_pred
@@ -1174,27 +1364,9 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
         } else {
           res	<- data.frame( "pred" = pred, "pred_transG" = pred0, "xb" = xb, "sf_residual" = sf_pred )
         }
-        if( y_nonneg ) res$pred_transG <- pred00
+        if( y_nonneg & tr_num==0 ) res$pred_transG <- pred00
       }
 
-    } else if( is.null( x0 ) & ( xconst_problem == FALSE )){
-      sf_pred	<- sf_pred - mean( mod$b_vc[,1] )
-      xb	    <- xb_vc + xb_const + mean( mod$b_vc[,1] )
-      pred	  <- xb + sf_pred
-      if( is.null( b_g0 ) == FALSE ){
-        na_b_g0   <- is.na( b_g0 )
-        if( sum( na_b_g0 ) > 0 ){
-          b_g0[ na_b_g0 ] <- 0
-          message( "Note: NAs are given to the groups that are not in xgroup")
-        }
-        pred   <- pred + rowSums( b_g0 )
-      }
-
-      if( !is.null( b_g ) ){
-        res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred, b_g )
-      } else {
-        res	<- data.frame( "pred" = pred, "xb" = xb, "sf_residual" = sf_pred )
-      }
     } else {
       res	<- NULL
       message( "Note: y is not predicted because x0 and/or xconst0 is missing" )
@@ -1238,11 +1410,6 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
         weight0     <- NULL
       }
 
-      B_covs  <-mod$other$B_covs
-      #B_covs_id<-colSums(B_covs0) - diag(B_covs0)
-      #B_covs   <-B_covs0[ B_covs_id != 0 , B_covs_id != 0 ]
-
-      sig   <-mod$other$sig
       XX	<- as.matrix( cbind( rep(1,n0), X0const, X0 ) )
 
       #########SVC
@@ -1250,11 +1417,21 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
         evSqrts    <-mod$other$evSqrts[[ i ]]
         if(length( evSqrts ) == 1) evSqrts <- NULL
 
+        sel        <- mod$other$omit_list[[ i ]]
         if( !is.null( evSqrts ) ){
           if( i == 1 ) {
-            XX<- cbind( XX, meig0$sf )
+            if(n0==1){
+              XX<- t(as.matrix( c(XX, meig0$sf[,sel] )))
+            } else {
+              XX<- cbind( XX, meig0$sf[,sel] )
+            }
+
           } else {
-            XX<- cbind( XX, X0[ , i-1 ] * meig0$sf )
+            if(n0==1){
+              XX<- t(as.matrix( c(XX, X0[ , i-1 ]*meig0$sf[,sel] )))
+            } else {
+              XX<- cbind( XX, X0[ , i-1 ] * meig0$sf[,sel] )
+            }
           }
         }
       }
@@ -1299,6 +1476,59 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
         }
       }
 
+      ######### T
+      for( i in 1:nsv ){
+        if( !is.na( mod$other$evSqrts_t[[i]][1] ) ){
+          sel        <- mod$other$omit_list[[ mod$other$id_ntv[i] ]]
+          if( i == 1 ) {
+            XX<- cbind( XX, meig0$sf_z[[1]][,sel] )
+          } else {
+            XX<- cbind( XX, X0[ , i-1 ] * meig0$sf_z[[1]][,sel] )
+          }
+          #evSqrts2   <- c( evSqrts2, mod$other$evSqrts_t[[i]] )#[sel]
+        }
+      }
+      ######### Tc
+      for( i in 1:nsv ){
+        if( !is.na( mod$other$evSqrts_tc[[i]][1] ) ){
+          sel        <- mod$other$omit_list[[ mod$other$id_ntcv[i] ]]
+          if( i == 1 ) {
+            XX<- cbind( XX, meig0$sf_z[[2]][,sel] )
+          } else {
+            XX<- cbind( XX, X0[ , i-1 ] * meig0$sf_z[[2]][,sel] )
+          }
+          #evSqrts2   <- c( evSqrts2, mod$other$evSqrts_tc[[i]] )#[sel]
+        }
+      }
+
+      ######### T_int
+      for( i in 1:nsv ){
+        if( !is.na(mod$other$evSqrts_t_int[[i]][1] ) ){
+          sel        <- mod$other$omit_list[[ mod$other$id_ntv_interact[i] ]]
+
+          if( i == 1 ) {
+            XX<- cbind( XX, sf_z_list[[1]][,sel] )
+          } else {
+            XX<- cbind( XX, X0[ , i-1 ] * sf_z_list[[1]][,sel] )
+          }
+          #evSqrts2   <- c( evSqrts2, ev_z_list[[1]] )#[,sel]#mod$other$evSqrts_t_int[[1]]
+        }
+      }
+
+      ######### Tc_int
+      for( i in 1:nsv ){
+        if( !is.na(mod$other$evSqrts_tc_int[[i]][1] ) ){
+          sel        <- mod$other$omit_list[[ mod$other$id_ntcv_interact[i] ]]
+
+          if( i == 1 ) {
+            XX<- cbind( XX, sf_z_list[[2]][,sel] )
+          } else {
+            XX<- cbind( XX, X0[ , i-1 ] * sf_z_list[[2]][,sel] )
+          }
+          #evSqrts2   <- c( evSqrts2, ev_z_list[[2]] )#[,sel]#mod$other$evSqrts_t_int[[1]]
+        }
+      }
+
       if( is.null( weight0 ) ){
         weight0  <- 1
       } else {
@@ -1306,7 +1536,10 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
       }
 
       X3            <- XX
-      X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* eevSqrt[eevSqrt > 0])
+      X3[,-( 1:nx )]<- t(t(XX[,-( 1:nx )])* mod$other$eevSqrt[mod$other$eevSqrt > 0])
+
+      B_covs  <- mod$other$B_covs
+      sig     <- mod$other$sig
       pred0_se<- sqrt( colSums( t( sqrt(weight0)*X3 ) * ( B_covs %*% t( sqrt(weight0)*X3 ) ) ) + sig )
       pred0_se<- pred0_se/sqrt( weight0 )
       if( sum(names(res) %in% "pred_transG") == 0 ){

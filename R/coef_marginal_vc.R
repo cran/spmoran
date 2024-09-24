@@ -1,6 +1,8 @@
 coef_marginal_vc  <- function( mod ){
 
-  if( !inherits( mod, "resf_vc") ) stop("Error: The model is not an output from the resf_vc fucntion")
+  if( !inherits( mod, "resf_vc") & !inherits( mod, "besf_vc") & !inherits( mod, "addlearn_local") ){
+    stop("Error: The model is not an output from resf_vc, besf_vc, or addlearn_local fucntion")
+  }
 
   n     <- length( mod$other$y )
   dif   <- mod$other$dif

@@ -4,11 +4,11 @@
 \usage{
 besf_vc( y, x, xconst = NULL, coords, s_id = NULL, x_nvc = FALSE, xconst_nvc = FALSE,
          x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num=5,
-         method = "reml", penalty = "bic", maxiter = 30,
-         covmodel="exp",enum = 200, bsize = 4000, ncores=NULL )
+         method = "reml", penalty = "bic", maxiter = 30, tol = 1e-30,
+                      covmodel="exp",enum = 200, bsize = 4000, ncores=NULL )
 }
 \description{
-Parallel and memory-free implementation of SNVC modeling for very large samples. The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), and SNVC (= SVC + NVC). Type of coefficients can be selected through BIC/AIC minimization. By default, it estimates a SVC model. SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robust against spurious correlation (multicollinearity), so, stable (see Murakami and Griffith, 2020).
+Parallel and memory-free implementation of SNVC modeling for very large samples. The model estimates residual spatial dependence, constant coefficients, spatially varying coefficients (SVCs), non-spatially varying coefficients (NVC; coefficients varying with respect to explanatory variable value), and SNVC (= SVC + NVC). Type of coefficients can be selected through BIC/AIC minimization. By default, it estimates a SVC model. SNVCs can be mapped just like SVCs. Unlike SVC models, SNVC model is robust against spurious correlation (multicollinearity), so, stable (see Murakami and Griffith, 2020). This function is not yet supported for spatio-temporal modeling.
 
 Note: The SVC model can be less accurate for large samples due to a degeneracy/over-smoothing problem (see Murakami et al., 2023). The \code{\link{addlearn_local}} is useful to mitigate this problem (See the coding example below).
 }
@@ -27,10 +27,11 @@ Note: The SVC model can be less accurate for large samples due to a degeneracy/o
 \item{method}{Estimation method. Restricted maximum likelihood method ("reml") and maximum likelihood method ("ml") are available. Default is "reml"}
 \item{penalty}{Penalty to select type of coefficients (SNVC, SVC, NVC, or constant) to stablize the estimates. The current options are "bic" for the Baysian information criterion-type penalty (N x log(K)) and "aic" for the Akaike information criterion  (2K) (see Muller et al., 2013). Default is "bic"}
 \item{maxiter}{Maximum number of iterations. Default is 30}
+\item{tol}{The tolerance for matrix inversion. Some errors regarding singular fit can be avoided by reducing the value, but the output can be unstable. Default is 1e-30}
 \item{covmodel}{Type of kernel to model spatial dependence. The currently available options are "exp" for the exponential kernel, "gau" for the Gaussian kernel, and "sph" for the spherical kernel}
 \item{enum}{Number of Moran eigenvectors to be used for spatial process modeling (scalar). Default is 200}
 \item{bsize}{Block/badge size. bsize x bsize elements are iteratively processed during the parallelized computation. Default is 4000}
-\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL, the number of available cores is detected. Default is NULL}
+\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL, the number of available cores - 2 is detected and used. Default is NULL}
 }
 \value{
 \item{b_vc}{Matrix of estimated SNVC (= SVC + NVC) on x (N x K)}

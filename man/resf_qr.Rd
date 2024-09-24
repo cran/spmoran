@@ -2,7 +2,8 @@
 \alias{resf_qr}
 \title{Spatial filter unconditional quantile regression}
 \usage{
-resf_qr( y, x = NULL, meig, tau = NULL, boot = TRUE, iter = 200, ncores=NULL )
+resf_qr( y, x = NULL, meig, tau = NULL, boot = TRUE,
+         iter = 200, parallel=FALSE, ncores=NULL )
 }
 \description{
 This function estimates the spatial filter unconditional quantile regression (SF-UQR) model.
@@ -14,7 +15,8 @@ This function estimates the spatial filter unconditional quantile regression (SF
 \item{tau}{The quantile(s) to be modeled. It must be a number (or a vector of numbers) strictly between 0 and 1. By default, tau = c(0.1, 0.2, ..., 0.9)}
 \item{boot}{If it is TRUE, confidence intervals of regression coefficients are estimated by a semiparametric bootstrapping. Default is TRUE}
 \item{iter}{The number of bootstrap replications. Default is 200}
-\item{ncores}{Number of cores used for the parallel computation. If ncores=NULL, which is the default, the number of available cores is detected and used}
+\item{parallel}{If TRUE, the bootstrapping for estimating confidence intervals is parallelized. Default is FALSE}
+\item{ncores}{Number of cores used for the parallel computation. If ncores=NULL, which is the default, the number of available cores - 2 is detected and used}
 }
 \value{
 \item{b}{Matrix of estimated regression coefficients (K x Q), where Q is the number of quantiles (i.e., the length of tau)}

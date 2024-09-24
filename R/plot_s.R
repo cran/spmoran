@@ -1,6 +1,7 @@
 
-plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, ncol = 8, col = NULL,
-                      inv =FALSE, brks = "regular", cex = 1, pch = 20, nmax = 20000 ){
+plot_s   <- function( mod, xnum = 0, btype = "all", xtype = "x", pmax = NULL, ncol = 8, col = NULL,
+                      inv =FALSE, brks = "regular", cex = 1, pch = 20, nmax = 20000,
+                      coords_z1_lim=NULL, coords_z2_lim = NULL){
 
   pmax0        <- pmax
   xnum         <- xnum + 1
@@ -21,7 +22,7 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
       nx       <- length( xname )
       names(dd)<- c("px","py",xname,paste(xname,"_p",sep=""))
     } else {
-      if( btype == "snvc" ){
+      if( btype == "all" ){
         dd     <- data.frame(coords = mod$other$coords,b_vc = mod$b_vc, p_vc = mod$p_vc )
       } else if( btype == "svc" ) {
         dd     <- data.frame(coords = mod$other$coords,b_vc = mod$B_vc_s[[1]], p_vc = mod$B_vc_s[[4]] )
@@ -47,6 +48,34 @@ plot_s   <- function( mod, xnum = 0, btype = "snvc", xtype = "x", pmax = NULL, n
       names(dd)<- c("px","py","Spatially.depepdent.component" )
       xnum     <- 1
       nx       <- 0
+    }
+  }
+
+  if( !is.null(mod$other$coords_z) ){
+    nz         <- dim(mod$other$coords_z)[2]
+
+    if( !is.null(coords_z1_lim) ){
+      if( length(coords_z1_lim)==1 ){
+        sel_coords_z1 <- mod$other$coords_z[,1]==coords_z1_lim
+      } else if(length(coords_z1_lim)==2){
+        sel_coords_z1 <- mod$other$coords_z[,1]>=min(coords_z1_lim) & mod$other$coords_z[,1]<=max(coords_z1_lim)
+      }
+      if(sum(sel_coords_z1)==0) stop("No sample in the value range: coords_z1_lim")
+      dd<-dd[sel_coords_z1,]
+    }
+
+    if( !is.null(coords_z2_lim) & nz==2 ){
+
+      coords_z2<-mod$other$coords_z[,2]
+      if( !is.null(coords_z1_lim) ) coords_z2<-coords_z2[mod$other$coords_z[,1]==coords_z1_lim]
+
+      if( length(coords_z2_lim)==1 ){
+        sel_coords_z2 <- coords_z2==coords_z2_lim
+      } else if(length(coords_z2_lim)==2){
+        sel_coords_z2 <- coords_z2>=min(coords_z2_lim) & coords_z2<=max(coords_z2_lim)
+      }
+      if(sum(sel_coords_z2)==0) stop("No sample in the value range: coords_z1_lim and coords_z2_lim")
+      dd<-dd[sel_coords_z2,]
     }
   }
 

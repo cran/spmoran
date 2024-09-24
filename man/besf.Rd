@@ -23,7 +23,7 @@ Parallel and memory-free implementation of RE-ESF-based spatial regression for v
 \item{nvc_num}{Number of basis functions used to model NVC. An intercept and nvc_num natural spline basis functions are used to model each NVC. Default is 5}
 \item{maxiter}{Maximum number of iterations. Default is 30}
 \item{bsize}{Block/badge size. bsize x bsize elements are iteratively processed during the parallelized computation. Default is 4000}
-\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL, the number of available cores is detected. Default is NULL}
+\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL, the number of available cores - 2 is detected and used. Default is NULL}
 }
 \value{
 \item{b}{Matrix with columns for the estimated coefficients on x, their standard errors, z-values, and p-values (K x 4). Effective if nvc =FALSE}

@@ -35,7 +35,7 @@ besf  	<- function( y, x = NULL, nvc = FALSE, nvc_sel = TRUE, coords, s_id = NUL
   bias  <- res$other$bias
 
 
-  other	  <- list( sf_alpha= sf_alpha, x_id = x_id, model = "resf", par0 = par0, nx = nx, method=method,
+  other	  <- list( sf_alpha= sf_alpha, x_id = x_id, model = "resf", par0 = par0, nx = nx, method=method, dif=1, y = y,
                    df = df, bias=bias, x = res$other$xconst, coords = res$other$coords )
 
   result  <-list( b = b, c_vc=c_vc, cse_vc=cse_vc, ct_vc = ct_vc, cp_vc = cp_vc,

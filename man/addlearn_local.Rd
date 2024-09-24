@@ -7,7 +7,9 @@ addlearn_local( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NULL,
            cl_num=NULL, cl=NULL, parallel=FALSE, ncores=NULL )
 }
 \description{
-This function performs an additional learning of local variations in spatially varying coefficients. While the SVC model implemented in \code{\link{resf_vc}} or \code{\link{besf_vc}} can be less accurate for large samples (e.g., n > 5,000) due to a degeneracy/over-smoothing problem, this additional learning mitigates this problem by synthesizing/averaging the model with local SVC models. The resulting spatial prediction implemented in this function is expected to be more accurate than the resf_vc function.
+This function performs an additional learning of local variations in spatially varying coefficients (SVC). While the SVC model implemented in \code{\link{resf_vc}} or \code{\link{besf_vc}} can be less accurate for large samples (e.g., n > 5,000) due to a degeneracy/over-smoothing problem, this additional learning mitigates this problem by synthesizing/averaging the model with local SVC models. The resulting spatial prediction implemented in this function is expected to be more accurate than the resf_vc function.
+
+Note that this function is not yet supported for spatio-temporal models with \code{!is.null(meig$coords_z)}.
 }
 \arguments{
 \item{mod}{Outpot from \code{\link{resf_vc}} or  \code{\link{besf_vc}} function}
@@ -17,8 +19,8 @@ This function performs an additional learning of local variations in spatially v
 \item{xgroup0}{Matrix of group indeces at prediction sites that may be group IDs (integers) or group names (N_0 x K_g). Default is NULL}
 \item{cl_num}{Number of local sub-models being aggregated/averaged. If NULL, the number is determined so that the number of samples per sub-model equals approximately 600. Default is NULL}
 \item{cl}{Vector of cluster ID for each sample (N x 1). If specified, the local sub-models are given by this ID. If NULL, k-means clustering based on spatial coordinates is performed to obtain spatial clusters each of which contain approximately 600 samples. Default is NULL}
-\item{parallel}{If TRUE, the model is estimated through parallel computation. The default is FALSE for \code{\link{resf_vc}} while TRUE for \code{\link{besf_vc}}}
-\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL and parallel = TRUE, the number of available cores is detected. Default is NULL}
+\item{parallel}{If TRUE, the model is estimated through parallel computation. The default is FALSE if mod is an \code{\link{resf_vc}} object while TRUE if mod is an \code{\link{besf_vc}} object}
+\item{ncores}{Number of cores used for the parallel computation. If ncores = NULL and parallel = TRUE, the number of available cores - 2 is used. Default is NULL}
 }
 
 \value{
@@ -43,7 +45,7 @@ This function performs an additional learning of local variations in spatially v
 \item{other}{List of other outputs, which are internally used}
 }
 \references{
-Murakami, D., Sugasawa, S., T., Seya, H., and Griffith, D.A. (2024) Sub-model aggregation-based scalable eigenvector spatial filtering: application to spatially varying coefficient modeling. Arxiv.
+Murakami, D., Sugasawa, S., T., Seya, H., and Griffith, D.A. (2024) Sub-model aggregation-based scalable eigenvector spatial filtering: application to spatially varying coefficient modeling. Geographical Analysis, DOI: 10.1111/gean.12393.
 }
 \author{
 Daisuke Murakami
@@ -65,7 +67,7 @@ xconst  <- dat[,c("lotsize","s1994","s1995","s1996","s1997","s1998")]
 coords  <- dat[ ,c("long","lat")]
 meig    <- meigen_f( coords )
 
-## Not run: Remove # and run
+## Not run
 # res0  <- resf_vc(y = y,x = x, xconst = xconst, meig = meig)
 # res   <- addlearn_local(res0) # It adjusts SVCs to model local patterns
 # res

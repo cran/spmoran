@@ -1,12 +1,12 @@
 \name{predict0}
 \alias{predict0}
-\title{Spatial predictions}
+\title{Spatial and spatio-temporal predictions}
 \usage{
 predict0( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL, offset0 = NULL,
 weight0 = NULL, compute_se=FALSE, compute_quantile = FALSE )
 }
 \description{
-It is a function for spatial prediction using the model estimated from \code{\link{esf}}, \code{\link{resf}}, or \code{\link{resf_vc}} function.
+It is a function for spatial/spatio-temporal pprediction using the model estimated from \code{\link{esf}}, \code{\link{resf}}, or \code{\link{resf_vc}} function.
 }
 \arguments{
 \item{mod}{Output from \code{\link{esf}} \code{\link{resf}}}, or \code{\link{resf_vc}}
@@ -20,12 +20,12 @@ It is a function for spatial prediction using the model estimated from \code{\li
 \item{compute_quantile}{If TRUE, Matrix of the quantiles for the predicted values (N x 15) is evaulated. It is currently supported only for continuous variables. Default is FALSE}
 }
 \value{
-\item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group). If tr_num > 0 or tr_nonneg ==TRUE (i.e., y is transformed) in the input model \code{\link{resf}}, another column including the predicted values in the transformed/normalized scale (pred_trans) is added. In addition, if compute_quantile =TRUE, predictive standard errors (pred_se) is evaluated and added as another column}
+\item{pred}{Matrix with the first column for the predicted values (pred). The second and the third columns are the predicted trend component (xb) and the residual spatial process (sf_residual). If xgroup0 is specified, the fourth column is the predicted group effects (group). If tr_num > 0 or tr_nonneg ==TRUE (i.e., y is transformed) in mod, there is another column of the predicted values in the transformed/normalized scale (pred_trans). In addition, if compute_quantile =TRUE, predictive standard error (pred_se) is evaluated and added as another column}
 \item{pred_quantile}{Effective if compute_quantile = TRUE. Matrix of the quantiles for the predicted values (N x 15). It is useful for evaluating uncertainty in the predictive values}
-\item{b_vc}{Matrix of estimated spatially (and non-spatially) varying coefficients (S(N)VCs) on x0 (N_0 x K)}
-\item{bse_vc}{Matrix of estimated standard errors for the S(N)VCs (N_0 x K)}
-\item{t_vc}{Matrix of estimated t-values for the S(N)VCs (N_0 x K)}
-\item{p_vc}{Matrix of estimated p-values for the S(N)VCs (N_0 x K)}
+\item{b_vc}{Matrix of estimated spatially (spatio-temporally) varying coefficients (S(T)VCs) on x0 (N_0 x K)}
+\item{bse_vc}{Matrix of estimated standard errors for the S(T)VCs (N_0 x K)}
+\item{t_vc}{Matrix of estimated t-values for the S(T)VCs (N_0 x K)}
+\item{p_vc}{Matrix of estimated p-values for the S(T)VCs (N_0 x K)}
 \item{c_vc}{Matrix of estimated non-spatially varying coefficients (NVCs) on x0 (N x K). Effective if nvc =TRUE in \code{\link{resf}}}
 \item{cse_vc}{Matrix of standard errors for the NVCs on x0 (N x K).Effective if nvc =TRUE in \code{\link{resf}}}
 \item{ct_vc}{Matrix of t-values for the NVCs on x0 (N x K). Effective if nvc =TRUE in \code{\link{resf}}}

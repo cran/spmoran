@@ -14,10 +14,11 @@ import(ggplot2)
 import(splines)
 import(methods)
 importFrom("stats", "median", "cor", "kmeans", "lm", "logLik","cov.wt",
-             "predict", "pt", "residuals", "sd", "approx",
+             "predict", "pt", "residuals", "sd", "approx", "p.adjust",
            "density", "quantile", "rnorm", "optim", "pnorm","qnorm","dnorm",
            "optimize","dist","aggregate","approxfun","weighted.mean")
 importFrom("Matrix", "sparse.model.matrix")
+importFrom("utils","head")
 export(besf)
 export(besf_vc)
 export(esf)
@@ -30,7 +31,6 @@ export(plot_s)
 export(plot_n)
 export(plot_qr)
 export(predict0)
-export(predict0_vc)
 export(resf)
 export(resf_qr)
 export(resf_vc)

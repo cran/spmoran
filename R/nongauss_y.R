@@ -43,7 +43,7 @@ print.nongauss_y <- function(x, ...)
 
   } else if( x$y_type == "count" ){
     if( x$tr_num == 0 ){
-      cat("Log-Gaussian approximation estimating\n")
+      cat("Overdispersed Poisson distribution (Log-Gaussian approximation)\n")
       cat("y ~ oPois( mu, sig ), mu = exp( xb )\n")
       cat(" \n")
       cat(" - oPois(): Overdispersed Poisson distribution\n")
@@ -52,11 +52,11 @@ print.nongauss_y <- function(x, ...)
       cat(" - sig    : Dispersion parameter (overdispersion if sig > 1)\n")
 
     } else {
-      mess0<-paste("Log-Gaussian and ",x$tr_num," SAL transformations are applied to y to estimate",sep="")
+      mess0<-paste("Distribution that transformes overdispersed Poisson distribution to adapt to y using ",x$tr_num," SAL trans.",sep="")
       cat(paste(mess0,"\n",sep=""))
       cat(" y ~ P( mu, par ), mu = exp( xb )\n")
       cat(" \n")
-      cat(" - P(): Distribution optimized through the transformations\n")
+      cat(" - P(): Distribution for count data optimized through the transformations\n")
       cat(" - xb : Regression term with fixed and random coefficients in b\n")
       cat("        which is specified by resf or resf_vc function\n")
       cat(" - par: Parameters estimating data distribution\n")

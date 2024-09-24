@@ -69,11 +69,37 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
   eevSqrt   <- res$other$eevSqrt
   sig_org   <- res$other$sig_org
 
-  other	  <- list( sf_alpha= sf_alpha, x_id = x_id, x_id0=x_id0, model = "resf", par0 = par0, nx = nx, df = df, bias=bias, res=res,
+  b_s       <-res$other$b_s
+  evSqrts   <-res$other$evSqrts
+  evSqrts_n <-res$other$evSqrts_n
+  evSqrts_t <-res$other$evSqrts_t
+  evSqrts_tc<-res$other$evSqrts_tc
+  evSqrts_t_int <-res$other$evSqrts_t_int
+  evSqrts_tc_int<-res$other$evSqrts_tc_int
+
+  omit_list <-res$other$omit_list
+  idd       <-res$other$idd
+  interact_sel_all<-res$other$interact_sel_all
+  int_ev_sel_list <-res$other$int_ev_sel_list
+  id_nsv<-res$other$id_nsv
+  id_ntv<-res$other$id_ntv
+  id_ntcv<-res$other$id_ntcv
+  id_ntv_interact<-res$other$id_ntv_interact
+  id_ntcv_interact<-res$other$id_ntcv_interact
+  nev0            <-res$other$nev0
+
+  other	  <- list( sf_alpha = sf_alpha, x_id = x_id, x_id0=x_id0, model = "resf", par0 = par0, nx = nx, df = df, bias=bias, res=res,
                    x = res$other$xconst, coords = meig$other$coords, dif=res$other$dif,method=method,
                    tr_num = tr_num, y_nonneg = y_nonneg, y_added = y_added, y_type = y_type,eevSqrt = eevSqrt,
                    xg_levels = xg_levels, is_weight = is_weight, B_covs = B_covs, sig = sig, sig_org=sig_org,
-                   y0 = y0, y = y, jackup=jackup, offset=offset, e_NULL = e_NULL, w_scale = w_scale)
+                   y0 = y0, y = y, jackup=jackup, offset=offset, e_NULL = e_NULL, w_scale = w_scale, b_s=b_s,
+
+                   coords_z = meig$other$coords_z,
+                   evSqrts=evSqrts,evSqrts_n=evSqrts_n,evSqrts_t=evSqrts_t,evSqrts_tc=evSqrts_tc,
+                   evSqrts_t_int=evSqrts_t_int,evSqrts_tc_int=evSqrts_tc_int,omit_list=omit_list,idd=idd,
+                   interact_sel_all=interact_sel_all,int_ev_sel_list=int_ev_sel_list,id_nsv=id_nsv,id_ntv=id_ntv,
+                   id_ntcv=id_ntcv,id_ntv_interact=id_ntv_interact,id_ntcv_interact=id_ntcv_interact,
+                   nev0=nev0)
 
   result  <-list( b = b, b_g = b_g, c_vc=c_vc, cse_vc=cse_vc, ct_vc = ct_vc, cp_vc = cp_vc,
                   s = s, s_c=s_c, s_g = s_g, e = e, vc = vc, r = r, sf = sf, pred = pred,

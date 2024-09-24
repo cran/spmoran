@@ -2,7 +2,7 @@
 besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
                       x_nvc = FALSE, xconst_nvc = FALSE,
                       x_sel = TRUE, x_nvc_sel = TRUE, xconst_nvc_sel = TRUE, nvc_num=5,
-                      method = "reml", penalty = "bic", maxiter = 30,
+                      method = "reml", penalty = "bic", maxiter = 30, tol=1e-30,
                       covmodel="exp",enum = 200, bsize = 4000, ncores=NULL ){
 
   n     	    <- length( y )
@@ -51,7 +51,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     rem_ord  <-NULL
     while(tres3){
       suppressWarnings(cor_test0<-cor(test0))
-      testt2<-try(vif <- diag(solve(cor_test0)), silent=TRUE)
+      testt2<-try(vif <- diag(solve(cor_test0, tol=tol)), silent=TRUE)
       #testt2<-try(vif <- diag(solve(cor(test0))), silent=TRUE)
       if( inherits(testt2, "try-error") ){#class(testt2)=="try-error"
         suppressWarnings(corr_0<-cor(test0))
@@ -88,7 +88,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
       term2		<- determinant( M0_sub )$modulus
       Msub_00	<- M[ id == par0_sel, id == par0_sel ]
       Msub_01	<- M[ id == par0_sel, id != par0_sel ]
-      term3_0	<- Msub_00 - Msub_01 %*% solve( M0_sub, tol = 1e-30 ) %*% t( Msub_01 )#, tol = 1e-30
+      term3_0	<- Msub_00 - Msub_01 %*% solve( M0_sub, tol=tol ) %*% t( Msub_01 )
     }
     return(list(term2 = term2, term3_0 = term3_0))
   }
@@ -144,7 +144,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     }
 
     diag(M0inv_00)	<- diag( M0inv_00 ) + evSqrt[ id[ id != 0 ] == par0_sel ] ^ 2
-    b_02_b		<- solve( M0inv_00, tol = 1e-30 ) %*% b_02
+    b_02_b		<- solve( M0inv_00, tol=tol ) %*% b_02
     b_02		<- M0inv_01 %*% b_02_b
     b		<- b_01 - b_02
     sse		<- yy - 2 * t( b ) %*% m + t( b ) %*% M2 %*% b
@@ -192,7 +192,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     diag( M [ -( 1:nx ), -( 1:nx ) ] ) <- diag( M[ -( 1:nx ), -( 1:nx ) ] ) + 1
 
     m[-(1:nx)]		<- m[ -( 1:nx ) ] * evSqrt
-    test			<-try(Minv	<- solve( M, tol = 1e-30 ))
+    test			<-try(Minv	<- solve( M, tol=tol ))
     #if(class(test)[1]=="try-error"){
     if( inherits(test,"try-error") ){
       loglik  	<- Inf
@@ -408,6 +408,12 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
 
   nsv	<- ifelse( is.null( X1 ), 1, dim( X1 )[ 2 ] + 1 )
 
+  if(nsv>=7){
+    message("Note: At most 5 covariates in x are recommended for stable estimation.")
+    message("      Consider using xconst")
+  }
+
+
   if( !is.null( s_id )[ 1 ] ){
     coords_gx<-tapply(coords[,1],s_id,mean)
     coords_gy<-tapply(coords[,2],s_id,mean)
@@ -454,17 +460,21 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
   nx	<- dim( X0 )[ 2 ]
   Mo 	<- crossprod( X0 )
   mo	<- crossprod( X0, y )
-  parVmax_sq <- sqrt( sd( y ) / sd( y - X0 %*% ( solve( Mo ) %*% mo ) ) )
+  parVmax_sq <- sqrt( sd( y ) / sd( y - X0 %*% ( solve( Mo, tol=tol ) %*% mo ) ) )
 
   nblock  <-max(1,round((n*(nxf + length(ev)*nsv)/bsize^2)))
   ids   <- unique(c(round(seq(1,n,len=nblock+1)),n))
 
   if(is.null(ncores)) {
-    ncores <- makeCluster(detectCores()-1,setup_strategy = "sequential")
+    ncores00<- detectCores()
+    ncores0 <- ifelse(ncores00<=2,ncores00, ifelse(ncores00<=5, ncores00-1,ncores00-2))
+    ncores <- makeCluster(ncores0,setup_strategy = "sequential")
   } else {
-    ncores <- makeCluster(ncores,setup_strategy = "sequential")
+    ncores0<- ncores
+    ncores <- makeCluster(ncores0,setup_strategy = "sequential")
   }
   registerDoParallel(ncores)
+  message(paste0("Inner product evaluation is parallelized with ", ncores0," cores"))
 
   im     <- NULL
   sfsf   <- foreach(im = 1:(length(ids)-1), .packages=c("fields", "splines"),.combine="+") %dopar%  {
@@ -621,7 +631,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
   iter	 <- 1
   gmess  <- 1
   warn   <- FALSE
-  while( (( obj > sd( y ) * 0.0001 ) & ( iter <= maxiter ))|( iter <= 4 ) ){
+  while( (( obj > 0.0001 ) & ( iter <= maxiter ))|( iter <= 4 ) ){#sd( y ) *
 
     if( !is.null(x) ) print( paste( "-------  Iteration ", iter, "  -------", sep = "" ) )
 
@@ -730,7 +740,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
         er_dum	<- TRUE
         n_omit0	<- 0
         while( er_dum == TRUE ){
-          try1	<- try( M0inv	<- solve( MM0,  tol = 1e-30 ), silent = TRUE )
+          try1	<- try( M0inv	<- solve( MM0, tol=tol ), silent = TRUE )
           try2	<- try( Mdet0	<- Mdet_f0( M = MM, M0 = MM0, id = idd,
                                          par0_sel = par0_sel, emet = method ), silent = TRUE)
           #er_dum	<- ( class(try1)[1] =="try-error" ) | ( class(try2)[1] =="try-error" )
@@ -962,7 +972,7 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
   diag( M[ -( 1:nx ), -( 1:nx ) ] ) <- diag( M[ -( 1:nx ), -( 1:nx ) ] ) + 1
 
   MM		<- M[ null_dum3, null_dum3 ]
-  MMinv		<- solve( MM, tol = 1e-30 )
+  MMinv		<- solve( MM, tol=tol )
 
   mm		<- m[ null_dum3 ]
   eevSqrt		<- evSqrt[ null_dum3[ -( 1:nx )] ]
@@ -1249,10 +1259,12 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
   bse_vc	<- data.frame( bse_vc )
   bz_vc		<- data.frame( bz_vc )
   bp_vc		<- data.frame( bp_vc )
+  bp_vc_adj<- data.frame( apply(bp_vc, 2, function(x) p.adjust(x, method="BY" ) ))
   names( b_vc )	<- c( "(Intercept)", xname )
   names( bse_vc )	<- c( "(Intercept)", xname )
   names( bz_vc )	<- c( "(Intercept)", xname )
   names( bp_vc )	<- c( "(Intercept)", xname )
+  names( bp_vc_adj )<- c( "(Intercept)", xname )
 
   if(is.null(b_vc_s0) ==FALSE ){
     bz_vc_s0<- as.matrix( b_vc_s0 / bse_vc_s0 )
@@ -1261,7 +1273,9 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     b_vc_s0		      <- data.frame( b_vc_s0 )
     bse_vc_s0       <- data.frame( bse_vc_s0 )
     bz_vc_s0		    <- data.frame( bz_vc_s0 )
-    bp_vc_s0		    <- data.frame( bp_vc_s0 )
+    #bp_vc_s0		    <- data.frame( bp_vc_s0 )
+    bp_vc_s0        <- data.frame( apply(bp_vc_s0, 2, function(x) p.adjust(x, method="BY" ) ))
+
     names( b_vc_s0 )	<- c( "(Intercept)", xname )
     names( bse_vc_s0 )<- c( "(Intercept)", xname )
     names( bz_vc_s0 )	<- c( "(Intercept)", xname )
@@ -1276,7 +1290,8 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
     b_vc_n0		      <- data.frame( b_vc_n0 )
     bse_vc_n0       <- data.frame( bse_vc_n0 )
     bz_vc_n0		    <- data.frame( bz_vc_n0 )
-    bp_vc_n0		    <- data.frame( bp_vc_n0 )
+    #bp_vc_n0		    <- data.frame( bp_vc_n0 )
+    bp_vc_n0        <- data.frame( apply(bp_vc_n0, 2, function(x) p.adjust(x, method="BY" ) ))
     names( b_vc_n0 )	<- c( "(Intercept)", xname )
     names( bse_vc_n0 )<- c( "(Intercept)", xname )
     names( bz_vc_n0 )	<- c( "(Intercept)", xname )
@@ -1363,11 +1378,11 @@ besf_vc		<- function( y, x, xconst = NULL, coords, s_id = NULL,
 
   #evSqrt2 # evSqrts = evSqrts, evSqrts_n = evSqrts_n,### b_s = bb, b_covs = bb_cov,
   other		<- list( res_int =res_int, r = r, sf_alpha = parR, x_id = x_id, nxf = nxf,np=np, xf_id = xf_id,# df = df,
-                  model = "resf_vc", nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num,
+                  model = "resf_vc", nvc_x=nvc_x, nvc_xconst=nvc_xconst, nvc_num = nvc_num, dif=1,
                   method=method, penalty=penalty, y_nonneg =FALSE, w_scale = 1, ncores = ncores,
                   y = y, x = x, xconst = xconst, coords = coords, weight = NULL )#, Bias=bias
 
-  result    <- list( b_vc = b_vc, bse_vc = bse_vc, z_vc = bz_vc, p_vc = bp_vc,
+  result    <- list( b_vc = b_vc, bse_vc = bse_vc, z_vc = bz_vc, p_vc = bp_vc_adj, p_vc_naive=bp_vc,
                      B_vc_s = B_vc_s, B_vc_n = B_vc_n, c = b_par, c_vc = c_vc, cse_vc = cse_vc,
                      cz_vc = cz_vc, cp_vc = cp_vc, s = s, s_c=s_nxconst, vc = vc, e = e_stat,
                      pred = pred, resid = resid, other = other, call = match.call() )
@@ -1386,7 +1401,7 @@ print.besf_vc <- function(x, ...)
   }
   cat("\nCoefficient estimates:\n")
   print( summary( x$b_vc ) )
-  cat("\nStatistical significance:\n")
+  cat("\nStatistical significance (adjusted by Benjamini-Yekutieli method):\n")
   p01<-apply(x$p_vc,2,function(x) sum(x<0.01))
   p05<-apply(x$p_vc,2,function(x) sum(x<0.05)) - p01
   p10<-apply(x$p_vc,2,function(x) sum(x<0.10)) - p01 - p05
@@ -1404,7 +1419,7 @@ print.besf_vc <- function(x, ...)
     cat("\n----Non-spatially varying coefficients on xconst (summary)----\n")
     cat("\nCoefficient estimates:\n")
     print( summary( x$c_vc ) )
-    cat("\nStatistical significance:\n")
+    cat("\nStatistical significance (adjusted by Benjamini-Yekutieli method):\n")
     cp01<-apply(x$cp_vc,2,function(x) sum(x<0.01))
     cp05<-apply(x$cp_vc,2,function(x) sum(x<0.05)) - cp01
     cp10<-apply(x$cp_vc,2,function(x) sum(x<0.10)) - cp01 - cp05
