@@ -8,7 +8,7 @@ meigen	<- function( coords = NULL,model = "exp", enum = NULL, s_id = NULL,
     threshold <- threshold - 1e-07
   }
 
-  if( is.null( coords_z ) ) interact <- FALSE
+  #if( is.null( coords_z ) ) interact <- FALSE
 
   if( is.null( cmat ) ){
     if( !is.null( s_id )[ 1 ] ){
@@ -25,6 +25,7 @@ meigen	<- function( coords = NULL,model = "exp", enum = NULL, s_id = NULL,
       n         <- dim(coords)[1]
       nn        <- dim(coords_uni)[1]
       if( n > nn ){
+        coords0 <- coords
         s_id    <- get.knnx(coords_uni,coords,1)$nn.index
         coords_x<-tapply(coords[,1],s_id,min)# min just because it seems the fastest
 
@@ -98,9 +99,22 @@ meigen	<- function( coords = NULL,model = "exp", enum = NULL, s_id = NULL,
   mes		<- paste0( " ", length( ev ), " spatial eigen-pairs" )
   message( mes )
 
+  z_use  <- NULL
+  if( !is.null(coords_z) ){
+    coords_z  <- as.matrix(coords_z)
+    z_uni     <- apply(coords_z,2,function(x) length(unique(x)))
+    coords_z  <- as.matrix(coords_z[,z_uni>=4])
+    if(min(z_uni) < 4 ){
+      z_om<-paste(which( z_uni < 4 ), collapse = ",")
+      message( paste0("   Note: coords_z[,c(",z_om,")] is ignored because its unique value is too small (<=3)" ))
+      if(dim(coords_z)[2]==0) coords_z<-NULL
+      z_use  <- z_uni >= 4
+      #if(sum(z_use)==0) z_use<-NULL
+    }
+  }
+
   if( !is.null(coords_z) ){
     ev_z <- sf_z <- ev0_z <- sf0_z <- h_z <- Cmean_z <- id_z <- coordk_z<-list( NULL )
-    coords_z  <- as.matrix(coords_z)
     nz        <- dim(coords_z)[2]
 
     for(j in 1:nz){
@@ -200,12 +214,13 @@ meigen	<- function( coords = NULL,model = "exp", enum = NULL, s_id = NULL,
     }
   } else {
     ev_z <- sf_z <- ev0_z <- sf0_z <- h_z <- Cmean_z <- id_z <-coordk_z<- NULL
+    interact<-FALSE
   }
 
   other	<- list( coords = coords, Cmean = Cmean,
                  h = h, model = model, fast = 0,s_id = s_id,
                  sfk = sfk, evk = ev, Cmeank = Cmeank, coordk = coordk, coordk_z=coordk_z,
-                 h_z = h_z, coords_z=coords_z, Cmean_z=Cmean_z, sfk_z=sf0_z, evk_z=ev0_z,
+                 h_z = h_z, coords_z=coords_z, Cmean_z=Cmean_z, sfk_z=sf0_z, evk_z=ev0_z, z_use=z_use,
                  interact=interact, interact_max_dim=interact_max_dim, id_z=id_z )
   #other$coordk	<- NULL
   #other$sfk	<- NULL

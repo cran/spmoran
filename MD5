@@ -1,4 +1,4 @@
-9b558a2e01e964f80c71fc3e875edb4b *DESCRIPTION
+9d86e96c0a6b0337565e47e8a4917745 *DESCRIPTION
 3212f6f0fa54521ace5f27fe9dc10b4f *NAMESPACE
 c3ad82c64ae50276bcd3776f97671fc0 *R/addlearn_local.R
 24db41ac3f0ba37ec1b16fd222a8473a *R/besf.R
@@ -8,9 +8,9 @@ e2652248a4f857b6dc4e4ae9aa62b102 *R/coef_marginal.R
 32e4910d0d5f5c33efd25238e5fc9e2e *R/esf.R
 bd9508eeb54f4b821996d822ffd0b2a6 *R/lsem.R
 3b0de9b3635670f2b9ccb20affb71ec4 *R/lslm.R
-76ce79360b18c89cabdac00ed9047495 *R/meigen.R
-09c87d92bb1498f819e582b6dbde7814 *R/meigen0.R
-41c34d556244490729827126c69d6af9 *R/meigen_f.R
+fc77344cef9c0a4edb0ba0b4a546dec3 *R/meigen.R
+b8c15f0faf78d9dd013cc832ca1caf4b *R/meigen0.R
+f4e6bcfe469ee8cb08b64869a30bac0f *R/meigen_f.R
 a2415083f0968a27cfc52e27233251dd *R/nongauss_y.R
 9399fe4366231080a5631fa5fe671f6b *R/plot_n.R
 e0d87d2075346bb031ce0f885ae77944 *R/plot_qr.R
@@ -20,7 +20,7 @@ d89fe69ba9e26171a3843d4960a0f5ab *R/plot_s.R
 b0ce1f9f5b13d167c50ef0a2d69d9222 *R/resf_qr.R
 892f0f81f82c699a22e5a8948b1bd23e *R/resf_vc.R
 03dbf8b8d1e8fe2dc3d407054f08c828 *R/weigen.R
-e0ced0fee2ee2b3d31b18b75efb2c113 *build/vignette.rds
+2a4fbeb0c28c244b8a8a88e33b60eaf5 *build/vignette.rds
 7bc8aa1840e57ce0f8a85ae13c6fb6d3 *inst/doc/boston_sample.pdf
 54dbdd360b4bba24e7a4868d167ee42f *inst/doc/boston_sample.pdf.asis
 59e47672c2a9a4475487156f529bebc4 *inst/doc/sample_code_spatiotemporal.pdf

@@ -4,14 +4,27 @@ meigen0		<- function(meig, coords0, coords_z0 = NULL, s_id0 = NULL) {
   }
 
   nz          <- 0
+  exception   <- FALSE
   if( !is.null(coords_z0) ){
-    coords_z0 <- as.matrix(coords_z0)
-    nz        <- dim(coords_z0)[2]
-    if( nz != length(meig$ev_z) ){
-      stop("Dimension mismatch: coords_z0 (meigen0) and coords_z (meigen)")
+    if( !is.null(meig$other$z_use[1]) ){
+      if( sum(meig$other$z_use)==0 ){
+        coords_z0 <- NULL
+        exception <- TRUE
+      } else {
+        coords_z0 <- as.matrix(as.matrix(coords_z0)[,meig$other$z_use])
+      }
+    } else {
+      coords_z0   <- as.matrix(coords_z0)
+    }
+
+    if( !is.null(coords_z0) ){
+      nz        <- dim(coords_z0)[2]
+      if( nz != length(meig$ev_z) ){
+        stop("Dimension mismatch: coords_z0 (meigen0) and coords_z (meigen)")
+      }
     }
   }
-  if( !is.null(meig$ev_z)&is.null(coords_z0) ){
+  if( !is.null(meig$ev_z)&is.null(coords_z0) & !exception ){
     stop("coords_z0 is missing")
   }
 

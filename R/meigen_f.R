@@ -7,7 +7,7 @@ meigen_f<- function( coords, model = "exp", enum = 200, s_id = NULL, threshold =
     stop( " enum must be a positive integer" )
   }
 
-  if( is.null( coords_z ) ) interact <- FALSE
+  #if( is.null( coords_z ) ) interact <- FALSE
 
   coords0   <-coords
   if( !is.null( s_id )[ 1 ] ){
@@ -101,11 +101,22 @@ meigen_f<- function( coords, model = "exp", enum = 200, s_id = NULL, threshold =
     message( mes )
     #result	<- list( sf  =sf_ap, ev = ev_ap, ev_full = ev_full )
 
+    z_use  <- NULL
+    if( !is.null(coords_z) ){
+      coords_z  <- as.matrix(coords_z)
+      z_uni     <- apply(coords_z,2,function(x) length(unique(x)))
+      coords_z  <- as.matrix(coords_z[,z_uni>=4])
+      if(min(z_uni) < 4 ){
+        z_om<-paste(which( z_uni < 4 ), collapse = ",")
+        message( paste0("   Note: coords_z[,c(",z_om,")] is ignored because its unique value is too small (<=3)" ))
+        if(dim(coords_z)[2]==0) coords_z<-NULL
+        z_use  <- z_uni >= 4
+      }
+    }
+
     if( !is.null(coords_z) ){
       ev_z      <- sf_z  <-ev0_z <- sf0_z    <- h_z <-Cmean_z<- id_z<-coordk_z<-list( NULL )
-      coords_z  <- as.matrix(coords_z)
       nz        <- dim(coords_z)[2]
-
       for(j in 1:nz){
         coords_z2  <- sort(unique(coords_z[,j]))
         nn_z       <- length( coords_z2 )
@@ -208,13 +219,14 @@ meigen_f<- function( coords, model = "exp", enum = 200, s_id = NULL, threshold =
       }
     } else {
       ev_z<- sf_z  <-ev0_z<-sf0_z    <- h_z <-Cmean_z<- id_z<-coordk_z<-NULL
+      interact     <-FALSE
     }
 
     other	<- list( coords = coords, Cmean = Cmean,sfsf=sfsf,
                    h = h, model = model, fast = 1,s_id = s_id,
                    sfk = sf0, evk=ev0, coordk = coordk,#Cmeank = Cmeank,
                    h_z = h_z, coords_z=coords_z, coordk_z=coordk_z,
-                   Cmean_z=Cmean_z, sfk_z=sf0_z, evk_z=ev0_z,
+                   Cmean_z=Cmean_z, sfk_z=sf0_z, evk_z=ev0_z,z_use=z_use,
                    interact=interact, interact_max_dim=interact_max_dim, id_z =id_z )
 
     result<-list( sf = sf_ap, ev = ev_ap, sf_z=sf_z, ev_z=ev_z, other = other )
