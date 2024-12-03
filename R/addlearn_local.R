@@ -7,12 +7,30 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
     if( mod$other$y_nonneg ) stop( "This function is yet not supported for non-Gaussian data" )
     y       <- mod$other$y
     dif     <- mod$other$dif
-    x       <- mod$other$x
     weight  <- mod$other$weight
-    xconst  <- mod$other$xconst
     coords  <- mod$other$coords
     method  <- mod$other$method
     penalty <- mod$other$penalty
+
+    is_resf <-inherits(mod,"resf")
+    if(is_resf){
+      x       <- xconst<-NULL
+      if(!is.null(mod$other$x)){
+        x_dum <- apply(mod$other$x,2,sd)>0
+        xconst<- mod$other$x[,x_dum]
+
+        if(!is.null(x0)){
+          xconst0<- x0[,mod$other$x_id0]
+        }
+        #if(!is.null(meig0)){
+        #  x0     <- matrix(1,nrow=nrow(coords0),ncol=1)
+        #}
+      }
+
+    } else {
+      x       <- mod$other$x
+      xconst  <- mod$other$xconst
+    }
 
     if( inherits(mod, "besf_vc") ){
       if( !is.null(meig0) ) message("Note: besf_vc is not supported for spatial prediction. x0 and meig0 are ignored" )
@@ -1452,7 +1470,7 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
     }
 
 
-    kmeans2   <- function(coords, cl_num, min_size=200, max_size=900){
+    kmeans2   <- function(coords, cl_num, min_size=500, max_size=900){#, min_size=200, max_size=900# changed
 
       coords_uni  <- unique(coords)
       kres        <- kmeans(coords_uni,cl_num)
@@ -1565,7 +1583,7 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
     if( !is.null( weight )) weight<-weight/sum(weight)*n
 
     if( is.null(cl) ){
-      if( is.null( cl_num ) ) cl_num <- round(n/600)
+      if( is.null( cl_num ) ) cl_num <- round(n/750)#600 ##changed
       cl_num     <- max(cl_num, 3)
       cl         <- kmeans2(coords, cl_num=cl_num)$cluster
       table(cl)
@@ -1604,9 +1622,10 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
 
     Wei [,cl_num2]     <-1
     Wei     <- Wei/rowSums(Wei,na.rm=TRUE)
+    n0         <- nrow(coords0)
 
     if(!is.null(coords0)){
-      if( is.null( x0 ) == FALSE ){
+      if( !is.null( x0 ) ){
         x0	<- as.matrix( x0 )
         if( is.numeric( x0 ) == FALSE ){
           mode( x0 ) <- "numeric"
@@ -1620,6 +1639,8 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
             x0  <- as.matrix( cbind(1, x0[ , x_id ] ))
           }
         }
+      } else if(is_resf){
+        x0      <- matrix(1,nrow=n0,ncol=1)
       }
 
       if( is.null( xconst0 ) == FALSE ){
@@ -1630,7 +1651,6 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
       nn         <- get.knnx(coords,coords0,4)
       nn$nn.dist[nn$nn.dist< 1e-10]<-1e-10
       nn_w       <- 1/nn$nn.dist/rowSums(1/nn$nn.dist)
-      n0         <- nrow(coords0)
       Wei0       <- Matrix(nrow = nrow(coords0), ncol = cl_num2, data = 0, sparse = TRUE)
       for(k in 1:cl_num2){ # This part is cl_num
         for(kk in 1:4){
@@ -1640,8 +1660,11 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
       Wei0       <- Wei0/rowSums(Wei0,na.rm=TRUE)
       Pred0      <- Pred0_se <- Wei0
       B_vc0      <- Bse_vc0  <- list(NULL)
-      for(kk in 1:ncol(mod$b_vc)){
-        B_vc0[[kk]]<-Bse_vc0[[kk]]<- Matrix(nrow = n0, ncol = cl_num2, data = 0, sparse = TRUE)
+
+      if(!is.null(mod$b_vc)){
+        for(kk in 1:ncol(mod$b_vc)){
+          B_vc0[[kk]]<-Bse_vc0[[kk]]<- Matrix(nrow = n0, ncol = cl_num2, data = 0, sparse = TRUE)
+        }
       }
     } else {
       Pred0      <- Pred0_se <- Wei0       <- NULL
@@ -1670,9 +1693,14 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
     loglik      <- Mod0$e$stat[3] + pen
 
     if( !is.null(coords0) ){
-      mod$other$x<-x
-      pmod0     <- predict0(mod,x0=x0,xconst0=xconst0,xgroup0=xgroup0,
-                            meig0=meig0,compute_se = TRUE,weight0=Wei0[,cl_num2])
+      if(!is_resf){
+        mod$other$x<-x
+        pmod0     <- predict0(mod,x0=x0,xconst0=xconst0,xgroup0=xgroup0,
+                              meig0=meig0,compute_se = TRUE,weight0=Wei0[,cl_num2])
+      } else {
+        pmod0     <- predict0(mod,x0=xconst0,xconst0=NULL,xgroup0=xgroup0,
+                              meig0=meig0,compute_se = TRUE,weight0=Wei0[,cl_num2])
+      }
     } else {
       pmod0     <- NA
     }
@@ -1816,9 +1844,11 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
                                        sel0          <- which( Wei0[,k]>0 )
                                        if(length(sel0)>0){
                                          x0_sub        <- xconst0_sub<-x0_sub1_const<-xgroup0_sub<-NULL
-                                         if( !is.null(x0))      x0_sub      <- as.matrix(x0)[sel0,x_sub_sel]
+                                         if( !is.null(x0)){
+                                           x0_sub      <- as.matrix(x0)[sel0,x_sub_sel]
+                                           if(ncol(x0)>length(x_sub_sel)) x0_sub1_const<-as.matrix(x0)[sel0,-x_sub_sel]### fixed
+                                         }
                                          if( !is.null(xconst0 ))xconst0_sub <- as.matrix(xconst0)[sel0,xconst_sub_sel]
-                                         if(ncol(x0)>length(x_sub_sel)) x0_sub1_const<-as.matrix(x0)[sel0,-x_sub_sel]
                                          xconst0_sub   <- cbind(xconst0_sub, x0_sub1_const)
                                          if(nrow(coords0)==1){
                                            meig0_sub     <- meigen0(meig_sub, coords0)
@@ -1835,13 +1865,15 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
                                        }
                                      }
 
-                                     Mod0$other$x_id<-rep(FALSE,ncol(x_sub2))
-                                     Mod0$other$x_id[x_sub_sel]<-TRUE
+                                     if(!is.null(x_sub2)){
+                                       Mod0$other$x_id<-rep(FALSE,ncol(x_sub2))
+                                       Mod0$other$x_id[x_sub_sel]<-TRUE
+                                     }
                                      Mod0$other$x_id[1]<-FALSE
 
                                      #Mod0$other$x_id <- Mod0$other$x_id[-1]
                                      Mod0$other$xf_id<-Mod0$other$xf_id[xconst_sub_sel]
-                                     Mod0$other$x    <-x_sub2
+                                     Mod0$other$x    <-x_sub2 #############　ここから
                                      Mod0$other$nx   <-ncol(x_sub2) + length(xconst_sub_sel)####### caution 230925
                                      Mod0$other$nxf  <-length(xconst_sub_sel)
                                      evSqrts_Mod0    <-Mod0$other$evSqrts
@@ -1852,6 +1884,7 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
                                      Mod0$other$b_s<-list(NULL)
 
                                      qqq_a <- qqq_b  <- 1
+                                     #ppp_num<-ifelse(is.null(Mod0$other$nx))
                                      for(ppp in 1:Mod0$other$nx){
                                        if(ppp %in% x_sub_sel){
                                          Mod0$other$evSqrts[[ppp]] <- evSqrts_Mod0[[qqq_a]]
@@ -2016,9 +2049,12 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
       if( !is.na(Mod[[k]][[3]][1]) ){
         Pred0[sel0,k]   <-Mod[[k]][[3]]$pred$pred
         Pred0_se[sel0,k]<-Mod[[k]][[3]]$pred$pred_se
-        for(kk in 1:(nx+1)){
-          B_vc0[[kk]][sel0,k]  <- Mod[[k]][[3]]$b_vc[,kk]
-          Bse_vc0[[kk]][sel0,k]<- Mod[[k]][[3]]$bse_vc[,kk]
+
+        if(!is_resf){
+          for(kk in 1:(nx+1)){
+            B_vc0[[kk]][sel0,k]  <- Mod[[k]][[3]]$b_vc[,kk]
+            Bse_vc0[[kk]][sel0,k]<- Mod[[k]][[3]]$bse_vc[,kk]
+          }
         }
       }
     }
@@ -2027,57 +2063,94 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
     pred2_0   <- pred_se2_0^2*rowSums(Wei0*Pred0/Pred0_se^2,na.rm=TRUE)
     pred3_0   <- data.frame(pred=pred2_0,pred_se=pred_se2_0)
 
-    BETA0     <- BETA0_se <- matrix(NA,nrow=n0,ncol=(nx + 1))
-    for(kk in 1:(nx + 1)){
-      BETA0  [ ,kk ] <- pred_se2_0^2*rowSums(Wei0*B_vc0[[kk]]/Pred0_se^2,na.rm=TRUE)
-      BETA0_se[ ,kk ] <- sqrt(1/rowSums(Wei0/Bse_vc0[[kk]]^2,na.rm=TRUE))
-    }
+    if(!is_resf){
+      BETA0     <- BETA0_se <- matrix(NA,nrow=n0,ncol=(nx + 1))
+      for(kk in 1:(nx + 1)){
+        BETA0  [ ,kk ] <- pred_se2_0^2*rowSums(Wei0*B_vc0[[kk]]/Pred0_se^2,na.rm=TRUE)
+        BETA0_se[ ,kk ] <- sqrt(1/rowSums(Wei0/Bse_vc0[[kk]]^2,na.rm=TRUE))
+      }
 
-    BETA0       <- as.data.frame(BETA0)
-    BETA0_se    <- as.data.frame(BETA0_se)
-    BETA0_z     <- as.data.frame(BETA0/BETA0_se)
-    names(BETA0)<- names(BETA0_se)<-names(BETA0_z)<-names(mod$b_vc)
-    BETA0_p	    <- 2 - 2 * pt( abs( as.matrix( BETA0_z ) ), df = Inf )
+      BETA0       <- as.data.frame(BETA0)
+      BETA0_se    <- as.data.frame(BETA0_se)
+      BETA0_z     <- as.data.frame(BETA0/BETA0_se)
+      names(BETA0)<- names(BETA0_se)<-names(BETA0_z)<-names(mod$b_vc)
+      BETA0_p	    <- 2 - 2 * pt( abs( as.matrix( BETA0_z ) ), df = Inf )
+    }
   }
 
   ######################## SVCs
-  Beta    <- Beta_se<-matrix(NA,nrow = n, ncol =ncol(Mod[[1]][1][[1]]$b_vc) )
-  for(kk in 1:ncol(Mod[[1]][1][[1]]$b_vc) ){
-    Beta0   <- Matrix(nrow = n, ncol = cl_num2, data = 0, sparse = TRUE)
-    Beta0_se<- Matrix(nrow = n, ncol = cl_num2, data = 0, sparse = TRUE)
-    for(k in 1:cl_num){
-      Beta0[Id[[k]],k]   <-Mod[[k]][1][[1]]$b_vc[,kk]
-      Beta0_se[Id[[k]],k]<-Mod[[k]][1][[1]]$bse_vc[,kk]
+  if(!is_resf){
+    Beta    <- Beta_se<-matrix(NA,nrow = n, ncol =ncol(Mod[[1]][1][[1]]$b_vc) )
+    for(kk in 1:ncol(Mod[[1]][1][[1]]$b_vc) ){
+      Beta0   <- Matrix(nrow = n, ncol = cl_num2, data = 0, sparse = TRUE)
+      Beta0_se<- Matrix(nrow = n, ncol = cl_num2, data = 0, sparse = TRUE)
+      for(k in 1:cl_num){
+        Beta0[Id[[k]],k]   <-Mod[[k]][1][[1]]$b_vc[,kk]
+        Beta0_se[Id[[k]],k]<-Mod[[k]][1][[1]]$bse_vc[,kk]
+      }
+      Beta0[,cl_num2]       <- Mod[[cl_num2]][1][[1]]$b_vc[,kk]
+      Beta0_se[,cl_num2]    <- Mod[[cl_num2]][1][[1]]$bse_vc[,kk]
+
+      Wei2 <- Wei
+      Wei2[is.na(Beta0)|Beta0==0]<-0
+      Wei2 <-Wei2/rowSums(Wei2)
+      Beta[,kk]   <- pred_se2^2*rowSums(Wei2*Beta0/Pred_se^2,na.rm=TRUE)
+      Beta_se[,kk]<- sqrt(1/rowSums(Wei2/Beta0_se^2,na.rm=TRUE))
+
+      NA_row            <- rowSums(Beta0,na.rm=TRUE)==0
+      Beta[NA_row,kk]   <- NA
+      Beta_se[NA_row,kk]<- NA
     }
-    Beta0[,cl_num2]       <- Mod[[cl_num2]][1][[1]]$b_vc[,kk]
-    Beta0_se[,cl_num2]    <- Mod[[cl_num2]][1][[1]]$bse_vc[,kk]
 
-    Wei2 <- Wei
-    Wei2[is.na(Beta0)|Beta0==0]<-0
-    Wei2 <-Wei2/rowSums(Wei2)
-    Beta[,kk]   <- pred_se2^2*rowSums(Wei2*Beta0/Pred_se^2,na.rm=TRUE)
-    Beta_se[,kk]<- sqrt(1/rowSums(Wei2/Beta0_se^2,na.rm=TRUE))
-
-    NA_row            <- rowSums(Beta0,na.rm=TRUE)==0
-    Beta[NA_row,kk]   <- NA
-    Beta_se[NA_row,kk]<- NA
-  }
-
-  b_const    <- setdiff(1:ncol(Beta),x_sel_global)
-  x_const_avc<- TRUE
-  if( x_const_avc==TRUE & length(b_const) > 0 ){
-    for(bb in b_const){
-      Beta[,bb]   <- mean(Beta[,bb])
-      Beta_se[,bb]<- sqrt(mean(Beta_se[,bb]^2))
+    b_const    <- setdiff(1:ncol(Beta),x_sel_global)
+    x_const_avc<- TRUE
+    if( x_const_avc==TRUE & length(b_const) > 0 ){
+      for(bb in b_const){
+        Beta[,bb]   <- mean(Beta[,bb])
+        Beta_se[,bb]<- sqrt(mean(Beta_se[,bb]^2))
+      }
     }
-  }
 
-  Beta       <- as.data.frame(Beta)
-  Beta_se    <- as.data.frame(Beta_se)
-  Beta_z     <- as.data.frame(Beta/Beta_se)
-  Beta_p	   <- 2 - 2 * pt( abs( as.matrix( Beta_z ) ), df = Inf )
-  Beta_p_adj <- data.frame( apply(Beta_p, 2, function(x) p.adjust(x, method="BY" ) ))
-  names(Beta)<- names(Beta_se)<-names(Beta_z)<-names(Beta_p)<-names(Beta_p_adj)<-names( Mod[[1]][1][[1]]$b_vc )
+    Beta       <- as.data.frame(Beta)
+    Beta_se    <- as.data.frame(Beta_se)
+    Beta_z     <- as.data.frame(Beta/Beta_se)
+    Beta_p	   <- 2 - 2 * pt( abs( as.matrix( Beta_z ) ), df = Inf )
+    Beta_p_adj <- data.frame( apply(Beta_p, 2, function(x) p.adjust(x, method="BY" ) ))
+    names(Beta)<- names(Beta_se)<-names(Beta_z)<-names(Beta_p)<-names(Beta_p_adj)<-names( Mod[[1]][1][[1]]$b_vc )
+  } else {
+    Beta       <- matrix(NA,nrow = n, ncol =1 )#ncol(Mod[[1]][1][[1]]$b_vc)
+    Beta_se    <-Beta_z<-Beta_p<-Beta_p_adj<-NA
+      Beta0   <- Matrix(nrow = n, ncol = cl_num2, data = 0, sparse = TRUE)
+      for(k in 1:cl_num){
+        Beta0[Id[[k]],k]   <-Mod[[k]][1][[1]]$b_vc[,1]
+      }
+      Beta0[,cl_num2]       <- Mod[[cl_num2]][1][[1]]$sf[,1]
+
+      Wei2 <- Wei
+      Wei2[is.na(Beta0)|Beta0==0]<-0
+      Wei2 <-Wei2/rowSums(Wei2)
+      Beta[,1]   <- pred_se2^2*rowSums(Wei2*Beta0/Pred_se^2,na.rm=TRUE)
+
+      NA_row            <- rowSums(Beta0,na.rm=TRUE)==0
+      Beta[NA_row,1]   <- NA
+
+    b_const    <- setdiff(1:ncol(Beta),x_sel_global)
+    x_const_avc<- TRUE
+    if( x_const_avc==TRUE & length(b_const) > 0 ){
+      for(bb in b_const){
+        Beta[,bb]   <- mean(Beta[,bb])
+      }
+    }
+
+    Beta       <- as.data.frame(Beta)
+    Beta0_se   <- NULL
+    #Beta_se    <- as.data.frame(Beta_se)
+    #Beta_z     <- as.data.frame(Beta/Beta_se)
+    #Beta_p	   <- 2 - 2 * pt( abs( as.matrix( Beta_z ) ), df = Inf )
+    #Beta_p_adj <- data.frame( apply(Beta_p, 2, function(x) p.adjust(x, method="BY" ) ))
+    names(Beta)<- names( Mod[[1]][1][[1]]$b_vc )#names(Beta_se)<-names(Beta_z)<-names(Beta_p)<-names(Beta_p_adj)<-
+
+  }
 
   ######################## Constant coefficients
   if( !is.null(xconst) ){
@@ -2089,8 +2162,14 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
         C0[Id[[k]],k]   <-Mod[[k]][1][[1]]$c[kk,1]
         C0_se[Id[[k]],k]<-Mod[[k]][1][[1]]$c[kk,2]
       }
-      C0[,cl_num2]     <- Mod[[cl_num2]][1][[1]]$c[kk,1]
-      C0_se[,cl_num2]  <- Mod[[cl_num2]][1][[1]]$c[kk,2]
+
+      if(!is_resf){
+        C0[,cl_num2]     <- Mod[[cl_num2]][1][[1]]$c[kk,1]
+        C0_se[,cl_num2]  <- Mod[[cl_num2]][1][[1]]$c[kk,2]
+      } else {
+        C0[,cl_num2]     <- Mod[[cl_num2]][1][[1]]$b[kk+1,1]
+        C0_se[,cl_num2]  <- Mod[[cl_num2]][1][[1]]$b[kk+1,2]
+      }
 
       Wei2              <- Wei
       Wei2[is.na(C0)|C0==0]<- 0
@@ -2179,7 +2258,7 @@ addlearn_local<-function( mod, meig0 = NULL, x0 = NULL, xconst0=NULL, xgroup0=NU
 
   other   <- list(C=C,C_se,R=R,Wei=Wei,Wei0 = Wei0, Beta0=Beta0,Beta0_se=Beta0_se,
                   method = method, e_NULL = e_stat_NULL,coords=coords, Pred_se=Pred_se, Pred0=Pred0, Pred0_se=Pred0_se,
-                  Mod_local=Mod_local, Mod_global=Mod_global, x=x, y=y, dif=dif)
+                  Mod_local=Mod_local, Mod_global=Mod_global, x=x, y=y, dif=dif, is_resf=is_resf)
 
   result  <- list(b_vc=Beta,bse_vc=Beta_se, z_vc=Beta_z, p_vc=Beta_p_adj, p_vc_naive=Beta_p,c=cest,b_g=b_g,
                   s=sm, s_global=sm_global, s_g = s_g, e = e_stat, pred=pred3,resid=resid,cl=cl,
@@ -2193,23 +2272,30 @@ print.addlearn_local <- function(x, ...)
 {
   cat("Call:\n")
   print(x$call)
-  cat("\n----Spatially varying coefficients on x (summary)----\n")
 
-  cat("\nCoefficient estimates:\n")
-  print( summary( x$b_vc ) )
-  cat("\nStatistical significance (adjusted by Benjamini-Yekutieli method):\n")
-  p01<-apply(x$p_vc,2,function(x) sum(x<0.01,na.rm=TRUE))
-  p05<-apply(x$p_vc,2,function(x) sum(x<0.05,na.rm=TRUE)) - p01
-  p10<-apply(x$p_vc,2,function(x) sum(x<0.10,na.rm=TRUE)) - p01 - p05
-  p90<-length(x$p_vc[,1]) - p01 - p05 - p10
-  pv <-data.frame(rbind( p90, p10, p05, p01))
-  names(pv)[1]  <- "Intercept"
-  row.names(pv) <- c("Not significant", "Significant (10% level)",
-                     "Significant ( 5% level)","Significant ( 1% level)")
-  print(pv)
-  if( !is.null(x$c) ){
-    cat("\n----Constant coefficients on xconst----------------------------\n")
-    print( x$c )
+  if(!x$other$is_resf){
+    cat("\n----Spatially varying coefficients on x (summary)----\n")
+    cat("\nCoefficient estimates:\n")
+    print( summary( x$b_vc ) )
+    cat("\nStatistical significance (adjusted by Benjamini-Yekutieli method):\n")
+    p01<-apply(x$p_vc,2,function(x) sum(x<0.01,na.rm=TRUE))
+    p05<-apply(x$p_vc,2,function(x) sum(x<0.05,na.rm=TRUE)) - p01
+    p10<-apply(x$p_vc,2,function(x) sum(x<0.10,na.rm=TRUE)) - p01 - p05
+    p90<-length(x$p_vc[,1]) - p01 - p05 - p10
+    pv <-data.frame(rbind( p90, p10, p05, p01))
+    names(pv)[1]  <- "Intercept"
+    row.names(pv) <- c("Not significant", "Significant (10% level)",
+                       "Significant ( 5% level)","Significant ( 1% level)")
+    print(pv)
+    if( !is.null(x$c) ){
+      cat("\n----Constant coefficients on xconst----------------------------\n")
+      print( x$c )
+    }
+  } else {
+    if( !is.null(x$c) ){
+      cat("\n----Coefficients----------------------------\n")
+      print( x$c )
+    }
   }
 
   cat("\n----Variance parameters----------------------------------\n")

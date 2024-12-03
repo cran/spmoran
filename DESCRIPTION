@@ -2,8 +2,8 @@ Package: spmoran
 Type: Package
 Title: Fast Spatial and Spatio-Temporal Regression using Moran
         Eigenvectors
-Version: 0.3.1
-Date: 2024-10-12
+Version: 0.3.2
+Date: 2024-12-14
 Authors@R: person(given = "Daisuke",
                     family = "Murakami",
                     role = c("aut", "cre"),
@@ -14,11 +14,11 @@ License: GPL (>= 2)
 Encoding: UTF-8
 Imports: sf, fields, vegan, Matrix, doParallel, foreach, ggplot2,
         spdep, rARPACK, RColorBrewer, splines, FNN, methods
-Suggests: R.rsp,
+Suggests: R.rsp, spData (>= 2.3.1)
 VignetteBuilder: R.rsp
 URL: https://github.com/dmuraka/spmoran
 NeedsCompilation: no
-Packaged: 2024-10-12 00:52:54 UTC; murak
 Author: Daisuke Murakami [aut, cre]
 Repository: CRAN
-Date/Publication: 2024-10-12 23:40:02 UTC
+Packaged: 2024-12-03 16:52:22 UTC; murak
+Date/Publication: 2024-12-03 17:10:02 UTC

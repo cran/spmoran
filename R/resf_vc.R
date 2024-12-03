@@ -897,8 +897,9 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
                               M, M0inv, M0inv_01, M0inv_00,
                               m, yy, b_01, b_02, n, nx, nsv, ntv, ntcv,nnxf,
                               nnsv, ng, emet, term2, term3_0, null_dum2,
-                              id, tr_comp=0, max_alpha=NULL ){ ##### erat>0.001
+                              id, tr_comp=0, max_sigma=NULL, max_alpha=NULL ){ ##### erat>0.001
 
+      if(!is.null(max_sigma)) par0_est[1]<-min(par0_est[2],max_sigma)
       if(!is.null(max_alpha)) par0_est[2]<-min(par0_est[2],max_alpha)
 
       par		    <- par0 ^ 2
@@ -1058,7 +1059,8 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
       M[ -( 1:nx ),    1:nx   ]	<-   M[ -( 1:nx ),    1:nx   ] * evSqrt
       M[    1:nx  , -( 1:nx ) ]	<- t(M[ -( 1:nx ),    1:nx   ] )
       M0		<- M
-      diag( M [ -( 1:nx ), -( 1:nx ) ] ) <- diag( M[ -( 1:nx ), -( 1:nx ) ] ) + 1
+      #diag( M [ -( 1:nx ), -( 1:nx ) ] ) <- diag( M[ -( 1:nx ), -( 1:nx ) ] ) + 1
+      diag( M )[ -( 1:nx ) ]  <- diag( M )[ -( 1:nx ) ] + 1
 
       m[-(1:nx)]		<- m[ -( 1:nx ) ] * evSqrt
       test			<-try(Minv	<- solve2( M, tol = tol ))
@@ -1236,19 +1238,16 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
     bc_value <- NULL
     y_nonneg <- FALSE
     y_org    <- y
+    zrat     <- sum(y_org==0)/length(y_org)
+    #y_added  <- 0#0.5
+    y_added2 <- -(1+0.5*zrat)/(y_org+0.5)
+
     if( is.null(offset) ){
       y      <- log( y_org + 0.5 ) + y_added2
     } else {
       if( min( offset ) <= 0 ) stop( "offset must be positive" )
       y      <- log( ( y_org+0.5 )/offset ) + y_added2
     }
-
-    zrat     <- sum(y_org==0)/length(y_org)
-    y_added  <- 0#0.5
-    y_added2 <- 0#-(1+0.5*zrat)/(y_org+0.5)
-    #if(tr_num==0) y<- y + y_added2
-    #y<- y + y_added2
-    #y_added2<-0
 
     if( is.null(weight) ){
       weight0<- 1
@@ -1858,14 +1857,15 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
         ulim    <- c( parVmax_sq, 5 )
         omethod <- "L-BFGS-B"
 
-        #par0_est<-par00; M = MM;m = mm;emet<-method;id=idd
+        ################# changed !!!!!!! 2024/11/14
         res    	<- optim( fn = lik_resf_vc, par00, par0 = par0, M = MM, M0inv = M0inv,
                           meig=meig, omit_list=omit_list,
                           M0inv_01 = M0inv_01, M0inv_00 = M0inv_00, b_01 = b_01, b_02 = b_02,
                           term2 = term2, term3_0 = term3_0, m = mm, yy = yy,nnxf=nnxf,nnsv=nnsv,
                           n = n, nx = nx, nsv = nsv, ntv = ntv, ntcv = ntcv, ng = ng, emet = method,
                           id = idd, par0_sel = par0_sel, par0_id = par0_id, null_dum2 = null_dum2,
-                          lower = llim, upper = ulim, method = omethod, tr_comp=tr_comp )
+                          tr_comp=tr_comp,max_alpha=10 )#, max_sigma=5*parVmax_sq,max_alpha=5
+        #lower = llim, upper = ulim, method = omethod,
         res_int <- res
 
       } else if( par0_sel <= nsv ){
@@ -2037,7 +2037,8 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
         MM[ -( 1:nx ),    1:nx   ]	<-   MM[ -( 1:nx ),    1:nx   ] * evSqrt
         MM[    1:nx  , -( 1:nx ) ]	<- t(MM[ -( 1:nx ),    1:nx   ] )
         MM0		<- MM
-        diag( MM[ -( 1:nx ), -( 1:nx ) ] ) <- diag( MM[ -( 1:nx ), -( 1:nx ) ] ) + 1
+        #diag( MM[ -( 1:nx ), -( 1:nx ) ] ) <- diag( MM[ -( 1:nx ), -( 1:nx ) ] ) + 1
+        diag( MM )[ -( 1:nx ) ] <- diag( MM )[ -( 1:nx ) ] + 1
         MMinv	<- solve2( MM, tol = tol )
         if( method == "reml" ){
           term1	<- determinant( MM )$modulus
@@ -2292,7 +2293,8 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
     MM[ -( 1:nx ), -( 1:nx ) ]	<- t( MM[ -( 1:nx ), -( 1:nx ) ] * eevSqrt ) * eevSqrt
     MM[ -( 1:nx ),    1:nx   ]	<-    MM[ -( 1:nx ),    1:nx   ] * eevSqrt
     MM[    1:nx  , -( 1:nx ) ]	<- t( MM[ -( 1:nx ),    1:nx   ] )
-    diag( MM [ -( 1:nx ), -( 1:nx ) ] ) <- diag( MM[ -( 1:nx ), -( 1:nx ) ] ) + 1
+
+    diag( MM )[ -( 1:nx )] <- diag( MM)[-(1:nx)] + 1
     MMinv	    <- solve2( MM, tol = tol )
 
     M0        <- M[null_dum3,null_dum3]
@@ -2537,7 +2539,7 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
       MM[ -( 1:nx ), -( 1:nx ) ]	<- t( MM[ -( 1:nx ), -( 1:nx ) ] * eevSqrt ) * eevSqrt
       MM[ -( 1:nx ),    1:nx   ]	<-    MM[ -( 1:nx ),    1:nx   ] * eevSqrt
       MM[    1:nx  , -( 1:nx ) ]	<- t( MM[ -( 1:nx ),    1:nx   ] )
-      diag( MM [ -( 1:nx ), -( 1:nx ) ] ) <- diag( MM[ -( 1:nx ), -( 1:nx ) ] ) + 1
+      diag( MM )[ -( 1:nx ) ] <- diag( MM )[ -( 1:nx ) ] + 1
 
       M0      <- M
       diag(M0)[ -(1:nx)]<- diag(M)[ -(1:nx)] + 1/eevSqrt^2

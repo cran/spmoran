@@ -41,9 +41,9 @@ Daisuke Murakami
 \examples{
 require(spdep)
 data(boston)
-
+if (require("spData", quietly=TRUE)) {
 ########## Rook adjacency-based W
-poly	    <- st_read(system.file("shapes/boston_tracts.shp",package="spData")[1])
+poly	    <- st_read(system.file("shapes/boston_tracts.gpkg", package="spData")[1])
 weig1	    <- weigen( poly )
 
 ########## knn-based W
@@ -59,4 +59,5 @@ dmat      <- as.matrix(dist(coords))
 cmat 	    <- exp(-dmat)
 diag(cmat)<- 0
 weig4	    <- weigen( cmat, threshold = 0 )
+}
 }

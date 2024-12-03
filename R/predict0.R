@@ -390,7 +390,10 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
       }
       xx0     <- xx0[,mod$other$x_id0]#xf_id0
       X0      <- as.matrix(cbind( 1, xx0)[,mod$other$x_id] )
-      X1      <- as.matrix( mod$other$res$other$xconst )[,mod$other$x_id]
+      X1      <- NULL
+      if(!is.null(mod$other$res$other$xconst)){
+        X1      <- as.matrix( mod$other$res$other$xconst )[,mod$other$x_id]
+      }
     } else {
       X0      <- NULL
     }
@@ -398,7 +401,7 @@ predict0   <- function( mod, meig0, x0 = NULL, xconst0 = NULL, xgroup0 = NULL,
     XX_0	    <- list( NULL )
     XX	      <- NULL
     nvc       <- mod$other$res$other$nvc_xconst
-    if( ( is.logical( nvc[ 1 ] ) ==FALSE )&( !is.null( x0 ) ) ){
+    if( (sum(mod$other$res$other$nvc_xconst)>0)&( is.logical( nvc[ 1 ] ) ==FALSE )&( !is.null( x0 ) ) ){
 
       X1_nvc  <- as.matrix( X1 )[ , nvc ]
       if( n0 == 1 ){

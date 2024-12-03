@@ -12,14 +12,14 @@ This function performs an additional learning of local variations in spatially v
 Note that this function is not yet supported for spatio-temporal models with \code{!is.null(meig$coords_z)}.
 }
 \arguments{
-\item{mod}{Outpot from \code{\link{resf_vc}} or  \code{\link{besf_vc}} function}
+\item{mod}{Outpot from \code{\link{resf}}, \code{\link{resf_vc}} or  \code{\link{besf_vc}} function}
 \item{meig0}{Moran eigenvectors at prediction sites. Output from \code{\link{meigen0}}}
 \item{x0}{Matrix of explanatory variables at prediction sites whose coefficients are allowed to vary across geographical space (N_0 x K). Default is NULL}
 \item{xconst0}{Matrix of explanatory variables at prediction sites whose coefficients are assumed constant (or NVC) across space (N_0 x K_const). Default is NULL}
 \item{xgroup0}{Matrix of group indeces at prediction sites that may be group IDs (integers) or group names (N_0 x K_g). Default is NULL}
 \item{cl_num}{Number of local sub-models being aggregated/averaged. If NULL, the number is determined so that the number of samples per sub-model equals approximately 600. Default is NULL}
 \item{cl}{Vector of cluster ID for each sample (N x 1). If specified, the local sub-models are given by this ID. If NULL, k-means clustering based on spatial coordinates is performed to obtain spatial clusters each of which contain approximately 600 samples. Default is NULL}
-\item{parallel}{If TRUE, the model is estimated through parallel computation. The default is FALSE if mod is an \code{\link{resf_vc}} object while TRUE if mod is an \code{\link{besf_vc}} object}
+\item{parallel}{If TRUE, the model is estimated through parallel computation. The default is FALSE}
 \item{ncores}{Number of cores used for the parallel computation. If ncores = NULL and parallel = TRUE, the number of available cores - 2 is used. Default is NULL}
 }
 
@@ -51,7 +51,7 @@ Murakami, D., Sugasawa, S., T., Seya, H., and Griffith, D.A. (2024) Sub-model ag
 Daisuke Murakami
 }
 \seealso{
-\code{\link{resf_vc}}, \code{\link{besf_vc}}
+\code{\link{resf}}, \code{\link{resf_vc}}, \code{\link{besf_vc}}
 }
 \examples{
 require(spdep)
@@ -93,9 +93,15 @@ meig    <- meigen_f( coords )
 #coords0 <- d0[ ,c("long","lat")]
 
 #meig    <- meigen_f( coords )
-#res0    <- resf_vc(y = y,x = x, xconst = xconst, meig = meig)
 #meig0   <- meigen0( meig=meig, coords0=coords0 )
-#res     <- addlearn_local(res0, meig0=meig0, x0=x0, xconst0=xconst0) #
+#
+#res0    <- resf(y = y,x = cbind(x,xconst), meig = meig)
+#res     <- addlearn_local(res0, meig0=meig0, x0=cbind(x0,xconst0))
+#pred    <- res$pred0       ## Predictive values
+#
+## OR
+#res0    <- resf_vc(y = y,x = x, xconst = xconst, meig = meig)
+#res     <- addlearn_local(res0, meig0=meig0, x0=x0, xconst0=xconst0)
 #pred    <- res$pred0       ## Predictive values
 
 }

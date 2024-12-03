@@ -87,6 +87,8 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
   id_ntv_interact<-res$other$id_ntv_interact
   id_ntcv_interact<-res$other$id_ntcv_interact
   nev0            <-res$other$nev0
+  np            <-res$other$np
+  b_sub     <-res$other$b_sub
 
   other	  <- list( sf_alpha = sf_alpha, x_id = x_id, x_id0=x_id0, model = "resf", par0 = par0, nx = nx, df = df, bias=bias, res=res,
                    x = res$other$xconst, coords = meig$other$coords, dif=res$other$dif,method=method,
@@ -94,12 +96,12 @@ resf  	<- function( y, x = NULL, xgroup = NULL, weight = NULL, offset = NULL,
                    xg_levels = xg_levels, is_weight = is_weight, B_covs = B_covs, sig = sig, sig_org=sig_org,
                    y0 = y0, y = y, jackup=jackup, offset=offset, e_NULL = e_NULL, w_scale = w_scale, b_s=b_s,
 
-                   coords_z = meig$other$coords_z,
+                   coords_z = meig$other$coords_z,penalty=penalty,
                    evSqrts=evSqrts,evSqrts_n=evSqrts_n,evSqrts_t=evSqrts_t,evSqrts_tc=evSqrts_tc,
                    evSqrts_t_int=evSqrts_t_int,evSqrts_tc_int=evSqrts_tc_int,omit_list=omit_list,idd=idd,
                    interact_sel_all=interact_sel_all,int_ev_sel_list=int_ev_sel_list,id_nsv=id_nsv,id_ntv=id_ntv,
                    id_ntcv=id_ntcv,id_ntv_interact=id_ntv_interact,id_ntcv_interact=id_ntcv_interact,
-                   nev0=nev0)
+                   nev0=nev0,np=np,b_sub=b_sub)
 
   result  <-list( b = b, b_g = b_g, c_vc=c_vc, cse_vc=cse_vc, ct_vc = ct_vc, cp_vc = cp_vc,
                   s = s, s_c=s_c, s_g = s_g, e = e, vc = vc, r = r, sf = sf, pred = pred,
