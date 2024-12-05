@@ -1,4 +1,4 @@
-030327393bcd16c8186b796b61862837 *DESCRIPTION
+c34e394b4afe83004d338a3c80b35fcf *DESCRIPTION
 3212f6f0fa54521ace5f27fe9dc10b4f *NAMESPACE
 7d466cb050bd75b386c2c679073ea879 *R/addlearn_local.R
 24db41ac3f0ba37ec1b16fd222a8473a *R/besf.R
@@ -18,7 +18,7 @@ d89fe69ba9e26171a3843d4960a0f5ab *R/plot_s.R
 e7c320535b0dd3b5e9d9fd39d47e1bb7 *R/predict0.R
 23c91aeaacfcaf52f78e2c6649825f0b *R/resf.R
 b0ce1f9f5b13d167c50ef0a2d69d9222 *R/resf_qr.R
-0f9bb83de0af5416f882c16affd7a150 *R/resf_vc.R
+4d63fad7a43692d801360f5cfb886faf *R/resf_vc.R
 03dbf8b8d1e8fe2dc3d407054f08c828 *R/weigen.R
 2a4fbeb0c28c244b8a8a88e33b60eaf5 *build/vignette.rds
 7bc8aa1840e57ce0f8a85ae13c6fb6d3 *inst/doc/boston_sample.pdf

@@ -1973,8 +1973,8 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
           }
         }
 
-        #score_cand <- res$value + pen * (nx + sum(par0[ par0_id != par0_sel ]!=0)+2 + 1 + tr_npar) - sum( log( weight ))
-        #if(score_cand < score){
+        score_cand <- res$value + pen * (nx + sum(par0[ par0_id != par0_sel ]!=0)+2 + 1 + tr_npar) - sum( log( weight ))#### 241205
+        if(score_cand < score){#### 241205
           if( ((flag==0)&( res_ref < res$value + pen * np_add )&(allvc[1]==FALSE))|((flag==1)&(allvc[1]==FALSE))){### reject
             par0[ par0_id == par0_sel ] 	<- 0
             null_dum[ par0_sel ]		<- 1
@@ -1989,7 +1989,7 @@ resf_vc<- function( y, x, xconst = NULL, xgroup = NULL, weight = NULL, offset = 
             loglik 	<- ( -1 / 2 ) * res$value
             score   <- res$value + pen * (nx + sum(par0[ par0_id != par0_sel ]!=0)+2 + 1 + tr_npar) - sum( log( weight ))
           }
-        #}
+        }#### 241205
       }
 
       LL0	<- c( LL0, loglik )

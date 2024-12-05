@@ -2,8 +2,8 @@ Package: spmoran
 Type: Package
 Title: Fast Spatial and Spatio-Temporal Regression using Moran
         Eigenvectors
-Version: 0.3.2
-Date: 2024-12-14
+Version: 0.3.3
+Date: 2024-12-05
 Authors@R: person(given = "Daisuke",
                     family = "Murakami",
                     role = c("aut", "cre"),
@@ -20,5 +20,5 @@ URL: https://github.com/dmuraka/spmoran
 NeedsCompilation: no
 Author: Daisuke Murakami [aut, cre]
 Repository: CRAN
-Packaged: 2024-12-03 16:52:22 UTC; murak
-Date/Publication: 2024-12-03 17:10:02 UTC
+Packaged: 2024-12-04 16:18:56 UTC; murak
+Date/Publication: 2024-12-05 08:30:02 UTC
